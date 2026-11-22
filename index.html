@@ -561,9 +561,23 @@
 
       <div class="card">
         <h2 class="card-title" style="margin-bottom: 0.35rem;">Configuración de API (Gemini)</h2>
-        <p class="card-subtitle" style="margin-bottom: 1rem;">Cuando generes tu API Key gratuita en Google AI Studio, pegala acá. Se guarda solo en tu navegador.</p>
+        <p class="card-subtitle" style="margin-bottom: 1rem;">Pegá tu API Key de Google AI Studio y elegí el modelo. Si el principal está saturado, la app intentará automáticamente el respaldo.</p>
+
+        <div class="form-grid">
+          <div>
+            <label for="apiKeyInput">API Key de Google AI Studio</label>
+            <input type="password" id="apiKeyInput" placeholder="Pegá tu API Key (AIza...)" />
+          </div>
+          <div>
+            <label for="modeloSelect">Modelo preferido</label>
+            <select id="modeloSelect" onchange="guardarModelo()">
+              <option value="gemini-3.8-flash">gemini-3.8-flash (predeterminado)</option>
+              <option value="gemini-3.8-flash-lite">gemini-3.8-flash-lite (más liviano)</option>
+            </select>
+          </div>
+        </div>
+
         <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
-          <input type="password" id="apiKeyInput" placeholder="Pegá tu API Key de Google AI Studio (AIza...)" style="flex: 1; min-width: 240px;" />
           <button class="btn btn-dark" onclick="guardarApiKey()">Guardar Key</button>
           <button class="btn btn-ghost" onclick="borrarApiKey()">Borrar Key</button>
         </div>
@@ -890,6 +904,19 @@
     // ==========================================
     // API KEY Y CONSULTA A GEMINI
     // ==========================================
+    function cargarModeloGuardado() {
+      const modelo = localStorage.getItem("nutri_gemini_modelo") || "gemini-3.8-flash";
+      const select = document.getElementById("modeloSelect");
+      if (select) select.value = modelo;
+      return modelo;
+    }
+
+    function guardarModelo() {
+      const modelo = document.getElementById("modeloSelect").value;
+      localStorage.setItem("nutri_gemini_modelo", modelo);
+      mostrarToast(`Modelo cambiado a ${modelo}`);
+    }
+
     function actualizarEstadoApi() {
       const key = localStorage.getItem("nutri_gemini_key");
       const badge = document.getElementById("apiStatusBadge");
@@ -927,7 +954,12 @@
       mostrarToast("Respuesta copiada");
     }
 
-    async function llamarGeminiConReintento(url, payload, maxIntentos = 3) {
+    function esErrorDemanda(msg) {
+      return /high demand|overloaded|unavailable/i.test(msg || "");
+    }
+
+    async function llamarModeloConReintento(modelo, apiKey, payload, maxIntentos = 2) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`;
       for (let intento = 1; intento <= maxIntentos; intento++) {
         const res = await fetch(url, {
           method: "POST",
@@ -937,12 +969,11 @@
 
         const data = await res.json();
         const msg = data?.error?.message || "";
-        const esAltaDemanda = /high demand|overloaded|unavailable/i.test(msg);
 
-        if (esAltaDemanda && intento < maxIntentos) {
+        if (esErrorDemanda(msg) && intento < maxIntentos) {
           document.getElementById("respuestaIA").textContent =
-            `Modelo con alta demanda, reintentando (${intento}/${maxIntentos})...`;
-          await new Promise(r => setTimeout(r, 2000));
+            `${modelo} con alta demanda, reintentando (${intento}/${maxIntentos})...`;
+          await new Promise(r => setTimeout(r, 1500));
           continue;
         }
 
@@ -967,7 +998,12 @@
         return;
       }
 
-      out.textContent = "Calculando porciones para Matías y Julieta...";
+      const modeloPrincipal = cargarModeloGuardado();
+      const modeloRespaldo = modeloPrincipal === "gemini-3.8-flash"
+        ? "gemini-3.8-flash-lite"
+        : "gemini-3.8-flash";
+
+      out.textContent = `Calculando porciones con ${modeloPrincipal}...`;
 
       const resumenPersonas = personas.map(p =>
         `- ${p.nombre}: Edad ${p.edad || "?"}, Altura ${p.altura || "?"}, Peso ${p.peso || "?"}, Objetivo: ${p.objetivo || "No especificado"}. ${p.notas ? "Notas: " + p.notas : ""}`
@@ -993,18 +1029,25 @@ REGLAS DE RESPUESTA:
 3. Aclaración breve cuando corresponda: son estimaciones orientativas basadas en sus datos.
       `;
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
       const payload = {
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: "user", parts: [{ text: pregunta }] }]
       };
 
       try {
-        const data = await llamarGeminiConReintento(url, payload);
-        if (data.error) {
+        let data = await llamarModeloConReintento(modeloPrincipal, apiKey, payload, 2);
+
+        if (data?.error && esErrorDemanda(data.error.message)) {
+          out.textContent = `${modeloPrincipal} saturado, probando con ${modeloRespaldo}...`;
+          data = await llamarModeloConReintento(modeloRespaldo, apiKey, payload, 2);
+        }
+
+        if (data?.error) {
           out.textContent = "Error de API: " + data.error.message;
-        } else {
+        } else if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
           out.textContent = data.candidates[0].content.parts[0].text;
+        } else {
+          out.textContent = "No se recibió una respuesta válida del modelo.";
         }
       } catch (err) {
         out.textContent = "Error de conexión: " + err.message;
@@ -1023,6 +1066,7 @@ REGLAS DE RESPUESTA:
     guardarStorage();
     renderComidas();
     renderPerfiles();
+    cargarModeloGuardado();
     actualizarEstadoApi();
   </script>
 </body>
