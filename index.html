@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NutrIA — Cálculo de porciones con IA</title>
+  <title>NutrIA — Calculadora de porciones con IA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -731,7 +731,7 @@
       <div class="card">
         <div class="card-header">
           <div>
-            <h2 class="card-title">Calculadora de Porciones y Menú</h2>
+            <h2 class="card-title">Calculadora de Porciones</h2>
           </div>
         </div>
 
@@ -741,17 +741,17 @@
         </div>
 
         <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
-          <button class="btn btn-primary" onclick="consultarIA()">Calcular con IA</button>
+          <button class="btn btn-primary" onclick="consultarIA()">Calcular porciones</button>
           <button class="btn btn-ghost" onclick="document.getElementById('preguntaInput').value = ''">Limpiar</button>
         </div>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">Respuesta</h3>
+          <h3 class="card-title">Respuesta del nutricionista</h3>
           <button class="btn btn-ghost btn-sm" onclick="copiarRespuesta()">Copiar respuesta</button>
         </div>
-        <div id="respuestaIA" class="ai-output">Listo para calcular porciones en crudo.</div>
+        <div id="respuestaIA" class="ai-output">Listo para calcular porciones.</div>
       </div>
     </section>
 
