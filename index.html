@@ -4,23 +4,56 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nutri — Matías & Julieta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
   <!-- SheetJS para parsear las hojas CSV del Google Sheet -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <style>
     :root {
-      --bg: #f6f7f9;
+      --bg: #f4f6f8;
       --surface: #ffffff;
-      --surface-alt: #f1f3f6;
-      --text: #111827;
-      --text-muted: #6b7280;
-      --border: #e5e7eb;
+      --surface-alt: #f8fafc;
+      --surface-subtle: #eef2f6;
+      --text: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
       --primary: #10b981;
       --primary-hover: #059669;
       --primary-soft: #ecfdf5;
+      --primary-border: #a7f3d0;
       --accent: #0f172a;
-      --danger: #ef4444;
-      --radius: 14px;
-      --shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      --accent-text: #ffffff;
+      --warn-bg: #fef3c7;
+      --warn-text: #b45309;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow: 0 6px 24px rgba(15, 23, 42, 0.045);
+      --shadow-sm: 0 1px 4px rgba(15, 23, 42, 0.06);
+      --font-display: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    html[data-theme="dark"] {
+      --bg: #0b111a;
+      --surface: #121a26;
+      --surface-alt: #182232;
+      --surface-subtle: #1e2a3d;
+      --text: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --border: #243247;
+      --primary: #10b981;
+      --primary-hover: #34d399;
+      --primary-soft: rgba(16, 185, 129, 0.14);
+      --primary-border: rgba(16, 185, 129, 0.35);
+      --accent: #e2e8f0;
+      --accent-text: #0b111a;
+      --warn-bg: rgba(245, 158, 11, 0.16);
+      --warn-text: #fbbf24;
+      --shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+      --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
     }
 
     * {
@@ -30,11 +63,18 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      font-family: var(--font-body);
       background: var(--bg);
       color: var(--text);
-      line-height: 1.5;
-      padding-bottom: 3rem;
+      font-size: 1rem;
+      line-height: 1.55;
+      padding-bottom: 3.5rem;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1, h2, h3, h4, .brand-title, .stat-val {
+      font-family: var(--font-display);
     }
 
     /* Header */
@@ -43,71 +83,130 @@
       border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
-      z-index: 20;
+      z-index: 30;
+      backdrop-filter: blur(10px);
     }
 
     .header-inner {
-      max-width: 960px;
+      max-width: 980px;
       margin: 0 auto;
-      padding: 1rem 1.25rem;
+      padding: 0.9rem 1.25rem;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 1rem;
+      gap: 0.85rem;
+    }
+
+    .header-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex: 1 1 auto;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 0.65rem;
+      gap: 0.75rem;
+      min-width: 0;
     }
 
-    .brand-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: var(--primary);
-      color: white;
+    .brand-logo {
+      width: 42px;
+      height: 42px;
+      flex-shrink: 0;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
       display: grid;
       place-items: center;
-      font-weight: 700;
-      font-size: 1.1rem;
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.28);
     }
 
-    .brand h1 {
-      font-size: 1.15rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+    .brand-logo svg {
+      width: 23px;
+      height: 23px;
     }
 
-    .brand span {
-      font-size: 0.8rem;
+    .brand-title {
+      font-size: 1.22rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+    }
+
+    .brand-sub {
+      font-size: 0.8125rem;
       color: var(--text-muted);
       display: block;
+      margin-top: 0.15rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .theme-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .theme-btn:hover {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+      color: var(--primary-hover);
+    }
+
+    .theme-btn svg {
+      width: 19px;
+      height: 19px;
     }
 
     /* Navigation Tabs */
     nav {
       display: flex;
-      gap: 0.35rem;
-      background: var(--surface-alt);
+      gap: 0.3rem;
+      background: var(--surface-subtle);
       padding: 0.3rem;
-      border-radius: 10px;
+      border-radius: 12px;
       overflow-x: auto;
+      scrollbar-width: none;
+      border: 1px solid var(--border);
+    }
+
+    nav::-webkit-scrollbar {
+      display: none;
     }
 
     .tab-btn {
       border: none;
       background: transparent;
-      padding: 0.5rem 0.95rem;
-      border-radius: 8px;
-      font-size: 0.88rem;
+      padding: 0.52rem 0.95rem;
+      border-radius: 9px;
+      font-family: var(--font-body);
+      font-size: 0.875rem;
       font-weight: 600;
       color: var(--text-muted);
       cursor: pointer;
       white-space: nowrap;
       transition: all 0.15s ease;
+      min-height: 36px;
     }
 
     .tab-btn:hover {
@@ -117,13 +216,13 @@
     .tab-btn.active {
       background: var(--surface);
       color: var(--text);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      box-shadow: var(--shadow-sm);
     }
 
     /* Main Container */
     main {
-      max-width: 960px;
-      margin: 1.75rem auto;
+      max-width: 980px;
+      margin: 1.5rem auto 0;
       padding: 0 1.25rem;
     }
 
@@ -137,7 +236,7 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
+      from { opacity: 0; transform: translateY(5px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
@@ -146,7 +245,7 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1.35rem;
+      padding: 1.4rem;
       box-shadow: var(--shadow);
       margin-bottom: 1.25rem;
     }
@@ -154,52 +253,65 @@
     .card-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      gap: 0.75rem;
+      align-items: flex-start;
+      margin-bottom: 1.05rem;
+      gap: 0.85rem;
       flex-wrap: wrap;
     }
 
     .card-title {
-      font-size: 1.05rem;
+      font-size: 1.22rem;
       font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
     }
 
     .card-subtitle {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: var(--text-muted);
+      margin-top: 0.2rem;
+      line-height: 1.45;
     }
 
     .grid-2 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.25rem;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.15rem;
     }
 
     /* Form Controls */
     label {
       display: block;
-      font-size: 0.82rem;
-      font-weight: 600;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
       color: var(--text-muted);
-      margin-bottom: 0.3rem;
+      margin-bottom: 0.45rem;
     }
 
     input, select, textarea {
       width: 100%;
-      padding: 0.65rem 0.85rem;
+      padding: 0.72rem 0.9rem;
       border: 1px solid var(--border);
-      border-radius: 9px;
-      font-family: inherit;
-      font-size: 0.92rem;
-      background: var(--surface);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      background: var(--surface-alt);
       color: var(--text);
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, background-color 0.15s;
     }
 
     input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: var(--primary);
+      background: var(--surface);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 88px;
+      line-height: 1.5;
     }
 
     /* Buttons */
@@ -208,46 +320,53 @@
       align-items: center;
       justify-content: center;
       gap: 0.45rem;
-      padding: 0.65rem 1.15rem;
-      border-radius: 9px;
-      border: none;
+      padding: 0.68rem 1.15rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      font-family: var(--font-body);
       font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
       transition: all 0.15s ease;
+      min-height: 42px;
     }
 
     .btn-primary {
       background: var(--primary);
-      color: white;
+      color: #ffffff;
     }
 
     .btn-primary:hover {
       background: var(--primary-hover);
+      color: #ffffff;
     }
 
     .btn-dark {
       background: var(--accent);
-      color: white;
+      color: var(--accent-text);
     }
 
     .btn-dark:hover {
-      opacity: 0.9;
+      opacity: 0.92;
     }
 
     .btn-ghost {
-      background: var(--surface-alt);
-      color: var(--text);
+      background: var(--surface-subtle);
+      color: var(--text-secondary);
+      border-color: var(--border);
     }
 
     .btn-ghost:hover {
-      background: #e5e7eb;
+      background: var(--surface-alt);
+      color: var(--text);
+      border-color: var(--primary-border);
     }
 
     .btn-sm {
-      padding: 0.4rem 0.75rem;
-      font-size: 0.8rem;
+      padding: 0.45rem 0.8rem;
+      font-size: 0.8125rem;
+      min-height: 34px;
     }
 
     /* Quick Prompts */
@@ -255,23 +374,27 @@
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
-      margin-bottom: 1rem;
+      margin-bottom: 1.1rem;
     }
 
     .chip {
       background: var(--surface-alt);
       border: 1px solid var(--border);
       border-radius: 999px;
-      padding: 0.4rem 0.85rem;
-      font-size: 0.82rem;
-      color: var(--text);
+      padding: 0.45rem 0.9rem;
+      font-family: var(--font-body);
+      font-size: 0.84rem;
+      font-weight: 500;
+      color: var(--text-secondary);
       cursor: pointer;
-      transition: all 0.15s;
+      transition: all 0.15s ease;
+      min-height: 36px;
     }
 
     .chip:hover {
       border-color: var(--primary);
       background: var(--primary-soft);
+      color: var(--text);
     }
 
     /* AI Response Area & Markdown Formatting */
@@ -280,14 +403,15 @@
       border-radius: 12px;
       padding: 1.35rem;
       min-height: 150px;
-      font-size: 0.95rem;
-      line-height: 1.65;
+      font-size: 0.98rem;
+      line-height: 1.68;
+      color: var(--text);
       border: 1px solid var(--border);
       word-wrap: break-word;
     }
 
     .ai-output p {
-      margin-bottom: 0.7rem;
+      margin-bottom: 0.75rem;
     }
 
     .ai-output p:last-child {
@@ -297,11 +421,12 @@
     .ai-output h2,
     .ai-output h3,
     .ai-output h4 {
-      margin-top: 1.1rem;
+      font-family: var(--font-display);
+      margin-top: 1.15rem;
       margin-bottom: 0.45rem;
       font-weight: 700;
       color: var(--text);
-      line-height: 1.35;
+      line-height: 1.32;
     }
 
     .ai-output h2:first-child,
@@ -310,23 +435,23 @@
       margin-top: 0;
     }
 
-    .ai-output h2 { font-size: 1.15rem; }
-    .ai-output h3 { font-size: 1.03rem; }
-    .ai-output h4 { font-size: 0.96rem; }
+    .ai-output h2 { font-size: 1.24rem; }
+    .ai-output h3 { font-size: 1.08rem; }
+    .ai-output h4 { font-size: 0.98rem; }
 
     .ai-output ul {
-      margin: 0.35rem 0 0.85rem 1.35rem;
+      margin: 0.4rem 0 0.9rem 1.35rem;
     }
 
     .ai-output li {
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.38rem;
       padding-left: 0.15rem;
     }
 
     .ai-output hr {
       border: none;
       border-top: 1px solid var(--border);
-      margin: 0.95rem 0;
+      margin: 1rem 0;
     }
 
     .status-pill {
@@ -335,47 +460,56 @@
       gap: 0.4rem;
       font-size: 0.78rem;
       font-weight: 600;
-      padding: 0.25rem 0.7rem;
+      padding: 0.28rem 0.75rem;
       border-radius: 999px;
+      white-space: nowrap;
     }
 
     .status-ok {
       background: var(--primary-soft);
       color: var(--primary-hover);
+      border: 1px solid var(--primary-border);
     }
 
     .status-warn {
-      background: #fef3c7;
-      color: #b45309;
+      background: var(--warn-bg);
+      color: var(--warn-text);
     }
 
     /* Profile Stats */
+    .profile-card {
+      margin-bottom: 0;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+    }
+
     .stat-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 0.65rem;
-      margin: 0.85rem 0;
+      margin: 0.9rem 0;
     }
 
     .stat-box {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 0.65rem 0.75rem;
+      border-radius: 11px;
+      padding: 0.7rem 0.75rem;
     }
 
     .stat-label {
       font-size: 0.72rem;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
       color: var(--text-muted);
-      font-weight: 600;
+      font-weight: 700;
     }
 
     .stat-val {
-      font-size: 1.05rem;
+      font-size: 1.12rem;
       font-weight: 700;
-      margin-top: 0.1rem;
+      margin-top: 0.15rem;
+      color: var(--text);
     }
 
     /* Table */
@@ -388,39 +522,50 @@
 
     .filters-bar input {
       flex: 2;
-      min-width: 200px;
+      min-width: 210px;
     }
 
     .filters-bar select {
       flex: 1;
-      min-width: 160px;
+      min-width: 170px;
     }
 
     .table-wrap {
       overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.9rem;
+      font-size: 0.92rem;
     }
 
     th {
       text-align: left;
-      padding: 0.75rem;
+      padding: 0.8rem 0.9rem;
       background: var(--surface-alt);
       color: var(--text-muted);
-      font-size: 0.78rem;
+      font-size: 0.75rem;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
       border-bottom: 1px solid var(--border);
+      white-space: nowrap;
     }
 
     td {
-      padding: 0.75rem;
+      padding: 0.8rem 0.9rem;
       border-bottom: 1px solid var(--border);
       vertical-align: middle;
+      color: var(--text-secondary);
+    }
+
+    td strong {
+      color: var(--text);
+      font-weight: 600;
     }
 
     tr:last-child td {
@@ -429,12 +574,13 @@
 
     .badge {
       display: inline-block;
-      padding: 0.2rem 0.6rem;
-      border-radius: 6px;
+      padding: 0.24rem 0.65rem;
+      border-radius: 7px;
       font-size: 0.78rem;
       font-weight: 600;
       background: var(--primary-soft);
       color: var(--primary-hover);
+      border: 1px solid var(--primary-border);
       white-space: nowrap;
     }
 
@@ -444,22 +590,105 @@
       bottom: 1.5rem;
       right: 1.5rem;
       background: var(--accent);
-      color: white;
-      padding: 0.75rem 1.15rem;
-      border-radius: 10px;
+      color: var(--accent-text);
+      padding: 0.78rem 1.2rem;
+      border-radius: 11px;
       font-size: 0.88rem;
-      font-weight: 500;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      font-weight: 600;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
       opacity: 0;
       pointer-events: none;
       transform: translateY(10px);
       transition: all 0.2s ease;
-      z-index: 50;
+      z-index: 60;
     }
 
     #toast.show {
       opacity: 1;
       transform: translateY(0);
+    }
+
+    /* Mobile Adjustments */
+    @media (max-width: 640px) {
+      .header-inner {
+        padding: 0.75rem 0.9rem;
+        gap: 0.65rem;
+      }
+
+      .brand-logo {
+        width: 38px;
+        height: 38px;
+      }
+
+      .brand-title {
+        font-size: 1.08rem;
+      }
+
+      .brand-sub {
+        font-size: 0.75rem;
+      }
+
+      nav {
+        width: 100%;
+      }
+
+      .tab-btn {
+        flex: 1 0 auto;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.82rem;
+      }
+
+      main {
+        margin-top: 1rem;
+        padding: 0 0.9rem;
+      }
+
+      .card {
+        padding: 1.05rem;
+        border-radius: 14px;
+        margin-bottom: 1rem;
+      }
+
+      .card-title {
+        font-size: 1.1rem;
+      }
+
+      .card-subtitle {
+        font-size: 0.85rem;
+      }
+
+      input, select, textarea {
+        font-size: 1rem;
+      }
+
+      .ai-output {
+        padding: 1rem;
+        font-size: 0.94rem;
+      }
+
+      .stat-grid {
+        gap: 0.45rem;
+      }
+
+      .stat-box {
+        padding: 0.55rem 0.5rem;
+      }
+
+      .stat-val {
+        font-size: 0.98rem;
+      }
+
+      th, td {
+        padding: 0.65rem 0.7rem;
+        font-size: 0.85rem;
+      }
+
+      #toast {
+        left: 0.9rem;
+        right: 0.9rem;
+        bottom: 1rem;
+        text-align: center;
+      }
     }
   </style>
 </head>
@@ -467,15 +696,41 @@
 
   <header>
     <div class="header-inner">
-      <div class="brand">
-        <div class="brand-icon">N</div>
-        <div>
-          <h1>Nutri & Porciones</h1>
-          <span>Matías & Julieta · Sincronizado con Google Sheets</span>
+      <div class="header-top-row">
+        <div class="brand">
+          <div class="brand-logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+              <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+            </svg>
+          </div>
+          <div>
+            <div class="brand-title">Nutri & Porciones</div>
+            <span class="brand-sub">Matías & Julieta · Google Sheets</span>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <button id="themeToggleBtn" class="theme-btn" type="button" onclick="alternarTema()" aria-label="Cambiar modo oscuro o claro" title="Cambiar modo oscuro o claro">
+            <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+            </svg>
+            <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2" />
+              <path d="M12 20v2" />
+              <path d="m4.93 4.93 1.41 1.41" />
+              <path d="m17.66 17.66 1.41 1.41" />
+              <path d="M2 12h2" />
+              <path d="M20 12h2" />
+              <path d="m6.34 17.66-1.41 1.41" />
+              <path d="m19.07 4.93-1.41 1.41" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      <nav>
+      <nav aria-label="Secciones principales">
         <button class="tab-btn active" data-tab="ia">Consultar IA</button>
         <button class="tab-btn" data-tab="comidas">Comidas (<span id="countComidas">0</span>)</button>
         <button class="tab-btn" data-tab="personas">Perfiles</button>
@@ -502,12 +757,12 @@
         <label>Consultas rápidas</label>
         <div class="chips">
           <button class="chip" onclick="usarEjemplo('Quiero comer entraña asada con puré de papas, ¿qué cantidad tiene que ser para Matías y cuánta para Julieta?')">Entraña con puré</button>
-          <button class="chip" onclick="usarEjemplo('Vamos a comer milanesas con ensalada de lechuga, choclo y huevo. ¿Cuántos gramos o unidades para Matías y cuántos para Julieta?')">Milanesas con ensalada</button>
-          <button class="chip" onclick="usarEjemplo('Sugerime un almuerzo y una cena usando solo comidas de nuestra lista de Google Sheets, con cantidades exactas para cada uno.')">Almuerzo y cena del día</button>
-          <button class="chip" onclick="usarEjemplo('Vamos a comer fideos con bolognesa casera, ¿cuántos gramos en crudo o cocido corresponden para Matías y para Julieta?')">Fideos con bolognesa</button>
+          <button class="chip" onclick="usarEjemplo('Vamos a comer milanesas con ensalada de lechuga, choclo y huevo. ¿Cuántos gramos en crudo para Matías y cuántos para Julieta?')">Milanesas con ensalada</button>
+          <button class="chip" onclick="usarEjemplo('Sugerime un almuerzo y una cena usando comidas de nuestra lista de Google Sheets, con gramos en crudo para cada uno.')">Almuerzo y cena del día</button>
+          <button class="chip" onclick="usarEjemplo('Vamos a comer fideos con bolognesa casera, ¿cuántos gramos en crudo corresponden para Matías y para Julieta?')">Fideos con bolognesa</button>
         </div>
 
-        <div style="margin-bottom: 0.9rem;">
+        <div style="margin-bottom: 1rem;">
           <label for="preguntaInput">Tu consulta</label>
           <textarea id="preguntaInput" rows="3" placeholder="Ej: Hoy hacemos supremas al horno con ensalada de lechuga, ¿qué cantidad para Matías y cuánta para Julieta?"></textarea>
         </div>
@@ -523,7 +778,7 @@
           <h3 class="card-title">Respuesta</h3>
           <button class="btn btn-ghost btn-sm" onclick="copiarRespuesta()">Copiar respuesta</button>
         </div>
-        <div id="respuestaIA" class="ai-output">Listo para calcular porciones para Matías y Julieta usando los datos actualizados de Google Sheets.</div>
+        <div id="respuestaIA" class="ai-output">Listo para calcular porciones en crudo para Matías y Julieta usando los datos actualizados de Google Sheets.</div>
       </div>
     </section>
 
@@ -610,6 +865,42 @@
   <div id="toast">Actualizado</div>
 
   <script>
+    // ==========================================
+    // TEMA CLARO / OSCURO
+    // ==========================================
+    function aplicarTema(tema) {
+      document.documentElement.setAttribute("data-theme", tema);
+      const moon = document.getElementById("iconMoon");
+      const sun = document.getElementById("iconSun");
+      if (tema === "dark") {
+        moon.style.display = "none";
+        sun.style.display = "block";
+      } else {
+        moon.style.display = "block";
+        sun.style.display = "none";
+      }
+    }
+
+    function inicializarTema() {
+      const guardado = localStorage.getItem("nutri_theme");
+      if (guardado === "dark" || guardado === "light") {
+        aplicarTema(guardado);
+        return;
+      }
+      const prefiereOscuro = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      aplicarTema(prefiereOscuro ? "dark" : "light");
+    }
+
+    function alternarTema() {
+      const actual = document.documentElement.getAttribute("data-theme") || "light";
+      const siguiente = actual === "dark" ? "light" : "dark";
+      localStorage.setItem("nutri_theme", siguiente);
+      aplicarTema(siguiente);
+      mostrarToast(siguiente === "dark" ? "Modo oscuro activado" : "Modo claro activado");
+    }
+
+    inicializarTema();
+
     // ==========================================
     // CONFIGURACIÓN PRINCIPAL
     // ==========================================
@@ -808,7 +1099,7 @@
         <tr>
           <td><strong>${escapeHtml(c.nombre)}</strong></td>
           <td><span class="badge">${escapeHtml(c.tipo || "Comida")}</span></td>
-          <td style="color: var(--text-muted);">${escapeHtml(c.notas || "-")}</td>
+          <td>${escapeHtml(c.notas || "-")}</td>
         </tr>
       `).join("");
     }
@@ -816,7 +1107,7 @@
     function renderPerfiles() {
       const container = document.getElementById("contenedorPerfiles");
       container.innerHTML = personas.map(p => `
-        <div class="card" style="margin-bottom: 0; background: var(--surface-alt);">
+        <div class="card profile-card">
           <div class="card-header" style="margin-bottom: 0.35rem;">
             <h3 class="card-title">${escapeHtml(p.nombre)}</h3>
             <span class="badge">${escapeHtml(p.objetivo || "Sin objetivo")}</span>
@@ -1013,21 +1304,23 @@
         `- ${c.nombre} [${c.tipo}]${c.notas ? " (" + c.notas + ")" : ""}`
       ).join("\n");
 
+      // Contexto interno del sistema (no se muestra en la interfaz)
       const systemPrompt = `
-Sos un asistente práctico de nutrición y organización de comidas para Matías y Julieta.
-Tu tarea principal es calcular porciones (en gramos, unidades o medidas caseras claras) diferenciando cuánto debe comer cada uno según su edad, altura, peso y objetivo.
+Actuá como el nutricionista profesional personal de Matías y Julieta.
+Aplicá tu criterio clínico, datos nutricionales y experiencia práctica para calcular porciones diferenciadas para cada persona según su edad, altura, peso y objetivo.
 
 PERFILES ACTUALES (leídos en tiempo real desde Google Sheets):
 ${resumenPersonas}
 
-LISTADO DE COMIDAS DISPONIBLES (con su tipo y forma de preparación):
+LISTADO DE COMIDAS DEL GOOGLE SHEET (con tipo y composición/preparación):
 ${resumenComidas}
 
-REGLAS DE RESPUESTA:
-1. Tené en cuenta la preparación y notas de cada plato del listado (por ejemplo, si son al horno, sin gluten, con semillas, con papas a la air fryer, etc.).
-2. Indicá claramente los gramos, unidades o medidas caseras recomendadas para Matías y para Julieta por separado.
-3. Sé claro, concreto y directo, sin rodeos innecesarios.
-4. Aclaración breve cuando corresponda: son estimaciones orientativas basadas en sus datos.
+DIRECTRICES OBLIGATORIAS DE TRABAJO:
+1. Cuando te consulten por comidas, revisá primero el listado del Google Sheet para verificar si figuran ahí y cómo están compuestas o preparadas (por ejemplo: rebozado sin TACC, al horno con poco aceite, guarniciones, etc.).
+2. Si consultan por comidas o alimentos que NO están en el listado del Google Sheet, respondé igualmente aplicando tu criterio y experiencia como nutricionista profesional y los datos de cada perfil.
+3. Todas las indicaciones de peso de cada alimento deben expresarse en GRAMOS Y EN CRUDO (peso crudo de referencia antes de cocinar), nunca en peso cocido. Si querés dar una equivalencia casera orientativa, aclarala como apoyo pero mantené siempre el gramo en crudo como valor principal.
+4. Indicá claramente las cantidades en gramos en crudo para Matías y para Julieta por separado, de forma clara, concreta y práctica.
+5. Incluí una aclaración breve indicando que son estimaciones orientativas.
       `;
 
       const payload = {
@@ -1042,7 +1335,7 @@ REGLAS DE RESPUESTA:
       try {
         let ultimoError = "";
         for (const modelo of colaModelosAuto) {
-          out.textContent = "Calculando porciones para Matías y Julieta...";
+          out.textContent = "Calculando porciones en crudo para Matías y Julieta...";
           const data = await llamarModeloConReintento(modelo, apiKey, payload, 2);
 
           const parts = data?.candidates?.[0]?.content?.parts;
