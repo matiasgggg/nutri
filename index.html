@@ -927,46 +927,6 @@
       mostrarToast("Respuesta copiada");
     }
 
-// ==========================================
-    // API KEY Y CONSULTA A GEMINI
-    // ==========================================
-    function actualizarEstadoApi() {
-      const key = localStorage.getItem("nutri_gemini_key");
-      const badge = document.getElementById("apiStatusBadge");
-      if (key) {
-        badge.textContent = "API Key lista";
-        badge.className = "status-pill status-ok";
-      } else {
-        badge.textContent = "Sin API Key (modo prueba)";
-        badge.className = "status-pill status-warn";
-      }
-    }
-
-    function guardarApiKey() {
-      const val = document.getElementById("apiKeyInput").value.trim();
-      if (!val) return;
-      localStorage.setItem("nutri_gemini_key", val);
-      document.getElementById("apiKeyInput").value = "";
-      actualizarEstadoApi();
-      mostrarToast("API Key guardada en este navegador");
-    }
-
-    function borrarApiKey() {
-      localStorage.removeItem("nutri_gemini_key");
-      actualizarEstadoApi();
-      mostrarToast("API Key eliminada");
-    }
-
-    function usarEjemplo(texto) {
-      document.getElementById("preguntaInput").value = texto;
-    }
-
-    function copiarRespuesta() {
-      const texto = document.getElementById("respuestaIA").textContent;
-      navigator.clipboard.writeText(texto);
-      mostrarToast("Respuesta copiada");
-    }
-
     async function llamarGeminiConReintento(url, payload, maxIntentos = 3) {
       for (let intento = 1; intento <= maxIntentos; intento++) {
         const res = await fetch(url, {
@@ -1050,7 +1010,7 @@ REGLAS DE RESPUESTA:
         out.textContent = "Error de conexión: " + err.message;
       }
     }
-    
+
     function escapeHtml(str) {
       return String(str)
         .replace(/&/g, "&amp;")
