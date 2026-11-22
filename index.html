@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nutri — Matías & Julieta</title>
-  <!-- SheetJS para leer CSV y Excel directo en el navegador -->
+  <!-- SheetJS para parsear las hojas CSV del Google Sheet -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <style>
     :root {
@@ -202,13 +202,6 @@
       border-color: var(--primary);
     }
 
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 0.85rem;
-      margin-bottom: 0.85rem;
-    }
-
     /* Buttons */
     .btn {
       display: inline-flex;
@@ -221,6 +214,7 @@
       font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
+      text-decoration: none;
       transition: all 0.15s ease;
     }
 
@@ -254,15 +248,6 @@
     .btn-sm {
       padding: 0.4rem 0.75rem;
       font-size: 0.8rem;
-    }
-
-    .btn-danger {
-      background: #fee2e2;
-      color: var(--danger);
-    }
-
-    .btn-danger:hover {
-      background: #fecaca;
     }
 
     /* Quick Prompts */
@@ -319,6 +304,35 @@
     .status-warn {
       background: #fef3c7;
       color: #b45309;
+    }
+
+    /* Profile Stats */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.65rem;
+      margin: 0.85rem 0;
+    }
+
+    .stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .stat-val {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-top: 0.1rem;
     }
 
     /* Table */
@@ -378,6 +392,7 @@
       font-weight: 600;
       background: var(--primary-soft);
       color: var(--primary-hover);
+      white-space: nowrap;
     }
 
     /* Toast */
@@ -413,7 +428,7 @@
         <div class="brand-icon">N</div>
         <div>
           <h1>Nutri & Porciones</h1>
-          <span>Matías & Julieta</span>
+          <span>Matías & Julieta · Sincronizado con Google Sheets</span>
         </div>
       </div>
 
@@ -421,7 +436,7 @@
         <button class="tab-btn active" data-tab="ia">Consultar IA</button>
         <button class="tab-btn" data-tab="comidas">Comidas (<span id="countComidas">0</span>)</button>
         <button class="tab-btn" data-tab="personas">Perfiles</button>
-        <button class="tab-btn" data-tab="datos">CSV & Config</button>
+        <button class="tab-btn" data-tab="datos">Sheet & Config</button>
       </nav>
     </div>
   </header>
@@ -433,22 +448,25 @@
         <div class="card-header">
           <div>
             <h2 class="card-title">Calculadora de Porciones y Menú</h2>
-            <p class="card-subtitle">Consultá qué comer y las cantidades exactas para Matías y Julieta según sus objetivos.</p>
+            <p class="card-subtitle">Lee tus comidas y perfiles directo desde Google Drive en tiempo real.</p>
           </div>
-          <span id="apiStatusBadge" class="status-pill status-warn">Sin API Key</span>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <span id="sheetStatusBadge" class="status-pill status-warn">Sincronizando Sheet...</span>
+            <button class="btn btn-ghost btn-sm" onclick="sincronizarGoogleSheet(true)">Actualizar datos</button>
+          </div>
         </div>
 
         <label>Consultas rápidas</label>
         <div class="chips">
-          <button class="chip" onclick="usarEjemplo('Quiero comer entrañas con puré, ¿qué cantidad tiene que ser para Matías y cuánta para Julieta?')">Entrañas con puré (porciones)</button>
-          <button class="chip" onclick="usarEjemplo('Armame un desayuno y merienda con nuestras infusiones y colaciones cargadas, indicando cantidades para cada uno.')">Desayuno y merienda</button>
-          <button class="chip" onclick="usarEjemplo('Sugerime un almuerzo y una cena usando solo comidas de nuestra lista, con gramos exactos para Matías y Julieta.')">Almuerzo y cena del día</button>
-          <button class="chip" onclick="usarEjemplo('Queremos algo dulce de postre después de cenar, ¿qué opción de la lista conviene y cuánto para cada uno?')">Idea de postre</button>
+          <button class="chip" onclick="usarEjemplo('Quiero comer entraña asada con puré de papas, ¿qué cantidad tiene que ser para Matías y cuánta para Julieta?')">Entraña con puré</button>
+          <button class="chip" onclick="usarEjemplo('Vamos a comer milanesas con ensalada de lechuga, choclo y huevo. ¿Cuántos gramos o unidades para Matías y cuántos para Julieta?')">Milanesas con ensalada</button>
+          <button class="chip" onclick="usarEjemplo('Sugerime un almuerzo y una cena usando solo comidas de nuestra lista de Google Sheets, con cantidades exactas para cada uno.')">Almuerzo y cena del día</button>
+          <button class="chip" onclick="usarEjemplo('Vamos a comer fideos con bolognesa casera, ¿cuántos gramos en crudo o cocido corresponden para Matías y para Julieta?')">Fideos con bolognesa</button>
         </div>
 
         <div style="margin-bottom: 0.9rem;">
           <label for="preguntaInput">Tu consulta</label>
-          <textarea id="preguntaInput" rows="3" placeholder="Ej: Quiero comer milanesas de pollo con ensalada, ¿cuántos gramos para Matías y cuántos para Julieta?"></textarea>
+          <textarea id="preguntaInput" rows="3" placeholder="Ej: Hoy hacemos supremas al horno con ensalada de lechuga, ¿qué cantidad para Matías y cuánta para Julieta?"></textarea>
         </div>
 
         <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
@@ -462,45 +480,22 @@
           <h3 class="card-title">Respuesta</h3>
           <button class="btn btn-ghost btn-sm" onclick="copiarRespuesta()">Copiar respuesta</button>
         </div>
-        <div id="respuestaIA" class="ai-output">Acá vas a ver el cálculo de porciones para Matías y Julieta basado en sus perfiles y comidas cargadas.</div>
+        <div id="respuestaIA" class="ai-output">Listo para calcular porciones para Matías y Julieta usando los datos actualizados de Google Sheets.</div>
       </div>
     </section>
 
-    <!-- PESTAÑA 2: COMIDAS CARGADAS -->
+    <!-- PESTAÑA 2: COMIDAS CARGADAS DESDE GOOGLE SHEETS -->
     <section id="tab-comidas" class="tab-panel">
       <div class="card">
         <div class="card-header">
           <div>
-            <h2 class="card-title">Listado de Comidas</h2>
-            <p class="card-subtitle">Filtrá, buscá o agregá comidas, infusiones, bebidas, postres o colaciones.</p>
+            <h2 class="card-title">Listado de Comidas (Google Sheets)</h2>
+            <p class="card-subtitle">Para agregar o editar comidas, hacelo en la hoja <strong>Comidas</strong> del Google Sheet y tocá Actualizar.</p>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="toggleFormComida()">+ Agregar comida</button>
-        </div>
-
-        <!-- Formulario para agregar comida manual -->
-        <div id="formNuevaComida" style="display: none; background: var(--surface-alt); padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
-          <div class="form-grid">
-            <div>
-              <label>Nombre de la comida</label>
-              <input type="text" id="nuevaComidaNombre" placeholder="Ej: Entraña asada" />
-            </div>
-            <div>
-              <label>Tipo / Categoría</label>
-              <select id="nuevaComidaTipo">
-                <option value="Comida normal">Comida normal</option>
-                <option value="Guarnición">Guarnición</option>
-                <option value="Infusión">Infusión</option>
-                <option value="Bebida">Bebida</option>
-                <option value="Colación">Colación</option>
-                <option value="Postre">Postre</option>
-              </select>
-            </div>
-            <div>
-              <label>Notas / Detalles (opcional)</label>
-              <input type="text" id="nuevaComidaNotas" placeholder="Ej: Corte magro, a la plancha" />
-            </div>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <a class="btn btn-primary btn-sm" href="https://docs.google.com/spreadsheets/d/1-GGFb16bK4S7Gcs3_cCEsfPbjxSXoZbZQPWrXzYjLX0/edit" target="_blank" rel="noopener">Abrir Google Sheet ↗</a>
+            <button class="btn btn-ghost btn-sm" onclick="sincronizarGoogleSheet(true)">Actualizar ahora</button>
           </div>
-          <button class="btn btn-dark btn-sm" onclick="agregarComidaManual()">Guardar comida</button>
         </div>
 
         <div class="filters-bar">
@@ -516,8 +511,7 @@
               <tr>
                 <th>Comida</th>
                 <th>Tipo</th>
-                <th>Notas / Info extra</th>
-                <th style="width: 70px;">Acción</th>
+                <th>Notas / Preparación</th>
               </tr>
             </thead>
             <tbody id="tablaComidasBody"></tbody>
@@ -526,127 +520,93 @@
       </div>
     </section>
 
-    <!-- PESTAÑA 3: PERFILES (MATÍAS Y JULIETA) -->
+    <!-- PESTAÑA 3: PERFILES DESDE GOOGLE SHEETS -->
     <section id="tab-personas" class="tab-panel">
       <div class="card">
         <div class="card-header">
           <div>
-            <h2 class="card-title">Datos Personales y Objetivos</h2>
-            <p class="card-subtitle">Editá cualquier dato y guardá los cambios; la IA los usa automáticamente en cada consulta.</p>
+            <h2 class="card-title">Perfiles de Matías y Julieta</h2>
+            <p class="card-subtitle">Leídos directamente desde las pestañas <strong>Matias</strong> y <strong>Julieta</strong> del Google Sheet compartido.</p>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="agregarPerfil()">+ Agregar persona</button>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <a class="btn btn-primary btn-sm" href="https://docs.google.com/spreadsheets/d/1-GGFb16bK4S7Gcs3_cCEsfPbjxSXoZbZQPWrXzYjLX0/edit" target="_blank" rel="noopener">Editar en Google Sheet ↗</a>
+            <button class="btn btn-ghost btn-sm" onclick="sincronizarGoogleSheet(true)">Actualizar ahora</button>
+          </div>
         </div>
 
         <div id="contenedorPerfiles" class="grid-2"></div>
       </div>
     </section>
 
-    <!-- PESTAÑA 4: CSV Y CONFIGURACIÓN -->
+    <!-- PESTAÑA 4: SHEET Y CONFIGURACIÓN -->
     <section id="tab-datos" class="tab-panel">
-      <div class="grid-2">
-        <div class="card">
-          <h2 class="card-title" style="margin-bottom: 0.35rem;">1. Importar CSV de Comidas</h2>
-          <p class="card-subtitle" style="margin-bottom: 1rem;">Cargá tu archivo CSV con el listado de comidas y su tipo (comida normal, infusión, postre, etc.).</p>
-          <input type="file" id="csvComidasInput" accept=".csv, .xlsx, .xls" />
-          <p class="card-subtitle" style="margin-top: 0.75rem;">Formato flexible: detecta automáticamente columnas como <em>comida / nombre</em>, <em>tipo / categoria</em> y <em>notas / descripcion</em>.</p>
-        </div>
-
-        <div class="card">
-          <h2 class="card-title" style="margin-bottom: 0.35rem;">2. Importar CSV de Personas</h2>
-          <p class="card-subtitle" style="margin-bottom: 1rem;">Cargá el CSV con los datos de Matías y Julieta (edad, altura, peso, objetivo).</p>
-          <input type="file" id="csvPersonasInput" accept=".csv, .xlsx, .xls" />
-          <p class="card-subtitle" style="margin-top: 0.75rem;">Detecta columnas como <em>nombre</em>, <em>edad</em>, <em>altura</em>, <em>peso</em> y <em>objetivo</em>.</p>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title" style="margin-bottom: 0.35rem;">Configuración de API (Gemini)</h2>
-        <p class="card-subtitle" style="margin-bottom: 1rem;">Pegá tu API Key de Google AI Studio y elegí el modelo. Si el principal está saturado, la app intentará automáticamente el respaldo.</p>
-
-        <div class="form-grid">
-          <div>
-            <label for="apiKeyInput">API Key de Google AI Studio</label>
-            <input type="password" id="apiKeyInput" placeholder="Pegá tu API Key (AIza...)" />
-          </div>
-          <div>
-            <label for="modeloSelect">Modelo preferido</label>
-            <select id="modeloSelect" onchange="guardarModelo()">
-              <option value="gemini-3.8-flash">gemini-3.8-flash (predeterminado)</option>
-              <option value="gemini-3.8-flash-lite">gemini-3.8-flash-lite (más liviano)</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
-          <button class="btn btn-dark" onclick="guardarApiKey()">Guardar Key</button>
-          <button class="btn btn-ghost" onclick="borrarApiKey()">Borrar Key</button>
-        </div>
-      </div>
-
       <div class="card">
         <div class="card-header">
           <div>
-            <h2 class="card-title">Respaldo y Restablecer</h2>
-            <p class="card-subtitle">Descargá tus datos editados en CSV o volvé a los valores iniciales de prueba.</p>
+            <h2 class="card-title">Origen de Datos: Google Drive</h2>
+            <p class="card-subtitle">Conectado en tiempo real a las hojas <strong>Comidas</strong>, <strong>Matias</strong> y <strong>Julieta</strong>.</p>
           </div>
+          <a class="btn btn-primary btn-sm" href="https://docs.google.com/spreadsheets/d/1-GGFb16bK4S7Gcs3_cCEsfPbjxSXoZbZQPWrXzYjLX0/edit" target="_blank" rel="noopener">Abrir Planilla ↗</a>
         </div>
+        <p id="detalleSincronizacion" class="card-subtitle">Estado: esperando primera sincronización...</p>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title" style="margin-bottom: 0.35rem;">API Key y Modelos Automáticos</h2>
+        <p class="card-subtitle" style="margin-bottom: 1rem;">La API Key precargada funciona automáticamente en cualquier dispositivo. El modelo se elige y rota solo ante picos de demanda.</p>
         <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
-          <button class="btn btn-ghost" onclick="exportarCSVComidas()">Descargar CSV Comidas</button>
-          <button class="btn btn-ghost" onclick="exportarCSVPersonas()">Descargar CSV Personas</button>
-          <button class="btn btn-danger" onclick="restablecerDemo()">Restaurar datos de ejemplo</button>
+          <input type="password" id="apiKeyInput" placeholder="Sobrescribir API Key solo en este navegador (opcional)" style="flex: 1; min-width: 240px;" />
+          <button class="btn btn-dark" onclick="guardarApiKey()">Guardar override</button>
+          <button class="btn btn-ghost" onclick="borrarApiKey()">Usar key del código</button>
         </div>
+        <p id="estadoModelos" class="card-subtitle" style="margin-top: 0.75rem;"></p>
       </div>
     </section>
   </main>
 
-  <div id="toast">Guardado</div>
+  <div id="toast">Actualizado</div>
 
   <script>
     // ==========================================
-    // DATOS INICIALES DE EJEMPLO (se reemplazan al subir tus CSV)
+    // CONFIGURACIÓN PRINCIPAL
     // ==========================================
-    const DEMO_COMIDAS = [
-      { nombre: "Entraña asada", tipo: "Comida normal", notas: "Corte vacuno a la parrilla o plancha" },
-      { nombre: "Puré de papas", tipo: "Comida normal", notas: "Papa pisada con un toque de leche/manteca" },
-      { nombre: "Pechuga de pollo a la plancha", tipo: "Comida normal", notas: "Proteína magra" },
-      { nombre: "Arroz blanco / integral", tipo: "Comida normal", notas: "Guarnición base" },
-      { nombre: "Ensalada mixta (lechuga, tomate, cebolla)", tipo: "Comida normal", notas: "Libre / baja en calorías" },
-      { nombre: "Mate amargo / Té verde", tipo: "Infusión", notas: "Sin azúcar" },
-      { nombre: "Café con leche descremada", tipo: "Infusión", notas: "Taza mediana" },
-      { nombre: "Agua / Soda / Limonada sin azúcar", tipo: "Bebida", notas: "Hidratación diaria" },
-      { nombre: "Yogur griego natural con frutas", tipo: "Colación", notas: "Media mañana o tarde" },
-      { nombre: "Puñado de almendras / nueces", tipo: "Colación", notas: "Grasas saludables" },
-      { nombre: "Gelatina sin azúcar / Fruta fresca", tipo: "Postre", notas: "Opción liviana" },
-      { nombre: "Chocolate amargo 70% (1-2 cuadraditos)", tipo: "Postre", notas: "Controlando porción" }
+    const API_KEY_POR_DEFECTO = "AQ.Ab8RN6Im20BgjTarvQ33dlVyPewMvM-zMyrjCXaiVNYpNlR9mw";
+    const GOOGLE_SHEET_ID = "1-GGFb16bK4S7Gcs3_cCEsfPbjxSXoZbZQPWrXzYjLX0";
+
+    const MODELOS_FALLBACK_BASE = [
+      "gemini-3.8-flash",
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
+      "gemini-2.0-flash",
+      "gemini-2.0-flash-lite"
     ];
 
-    const DEMO_PERSONAS = [
-      {
-        nombre: "Matías",
-        edad: "30",
-        altura: "178 cm",
-        peso: "82 kg",
-        objetivo: "Bajar de peso manteniendo masa muscular",
-        notas: "Priorizar buena porción de proteínas y moderar carbohidratos."
-      },
-      {
-        nombre: "Julieta",
-        edad: "28",
-        altura: "165 cm",
-        peso: "60 kg",
-        objetivo: "Mantener peso y tonificar",
-        notas: "Porciones equilibradas, livianas a la noche."
-      }
+    // Respaldo inicial (los datos reales que armaste en tu Sheet)
+    const RESPALDO_COMIDAS = [
+      { nombre: "Milanesas", tipo: "Comida", notas: "Milanesas de peceto o nalga, finas. Caseras, al horno. Con poco aceite. Rebozadas sin gluten, con semillas, Pure en escamas, avena, rebozador sin tacc." },
+      { nombre: "Supremas", tipo: "Comida", notas: "Supremas finitas caseras al horno, con poco aceite. Rebozadas sin gluten, con semillas, Pure en escamas, avena, rebozador sin tacc." },
+      { nombre: "Fideos", tipo: "Comida", notas: "Fideos frescos con salsa bolognesa casera." },
+      { nombre: "Wraps de carne", tipo: "Comida", notas: "Wraps de carne, lechuga, huevo choclo y arvejas. Con papas a la air fryer" },
+      { nombre: "Wraps de pollo", tipo: "Comida", notas: "Wraps de pollo con mayonesa lechuga arroz huevo choclo y arvejas." },
+      { nombre: "Ensalada lechuga choclo y huevo", tipo: "Guarnición", notas: "Ensalada de lechuga tomate choclo y huevo. Con aceite, aceto balsamico y sal. Y semillas de sesamo." },
+      { nombre: "Pure de papas", tipo: "Guarnición", notas: "Pure de papas (con leche y poca manteca)." },
+      { nombre: "Entraña asada", tipo: "Comida", notas: "Entraña a la parrilla con condimientos para carne y sal." },
+      { nombre: "Jugo de naranja", tipo: "Infusión", notas: "Jugo de naranjas natural." },
+      { nombre: "Ensalada de lechuga", tipo: "Guarnición", notas: "Ensalada de lechuga repollada." }
     ];
 
-    // Estado en memoria respaldado por localStorage
-    let comidas = JSON.parse(localStorage.getItem("nutri_comidas")) || [...DEMO_COMIDAS];
-    let personas = JSON.parse(localStorage.getItem("nutri_personas")) || [...DEMO_PERSONAS];
+    const RESPALDO_PERSONAS = [
+      { nombre: "Matías", edad: "45", altura: "193 cm", peso: "100 kg", objetivo: "Bajar de peso", notas: "" },
+      { nombre: "Julieta", edad: "33", altura: "163 cm", peso: "60 kg", objetivo: "Bajar de peso", notas: "" }
+    ];
 
-    function guardarStorage() {
-      localStorage.setItem("nutri_comidas", JSON.stringify(comidas));
-      localStorage.setItem("nutri_personas", JSON.stringify(personas));
-      document.getElementById("countComidas").textContent = comidas.length;
+    let comidas = JSON.parse(localStorage.getItem("nutri_cache_comidas")) || [...RESPALDO_COMIDAS];
+    let personas = JSON.parse(localStorage.getItem("nutri_cache_personas")) || [...RESPALDO_PERSONAS];
+    let colaModelosAuto = [...MODELOS_FALLBACK_BASE];
+
+    function obtenerApiKeyActiva() {
+      const override = (localStorage.getItem("nutri_gemini_key_override") || "").trim();
+      return override || (API_KEY_POR_DEFECTO || "").trim();
     }
 
     function mostrarToast(mensaje) {
@@ -669,14 +629,119 @@
     });
 
     // ==========================================
-    // GESTIÓN DE COMIDAS
+    // LECTURA EN TIEMPO REAL DESDE GOOGLE SHEETS
+    // ==========================================
+    function obtenerCampoFlexible(row, posiblesClaves) {
+      const keys = Object.keys(row);
+      for (const posible of posiblesClaves) {
+        const match = keys.find(k => k.toLowerCase().trim().includes(posible));
+        if (match && row[match] !== undefined && row[match] !== "") {
+          return String(row[match]).trim();
+        }
+      }
+      return "";
+    }
+
+    async function leerHojaSheet(nombreHoja) {
+      const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(nombreHoja)}&t=${Date.now()}`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status} al leer hoja ${nombreHoja}`);
+      const csvText = await res.text();
+      if (csvText.trim().startsWith("<!DOCTYPE html")) {
+        throw new Error("El Google Sheet no está público en modo lectura.");
+      }
+      const wb = XLSX.read(csvText, { type: "string" });
+      const firstSheet = wb.Sheets[wb.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+    }
+
+    function parsearPerfilHoja(nombreMostrado, filas) {
+      if (!filas || !filas.length) return null;
+      // Tomamos la última fila con datos por si van agregando mediciones debajo
+      const filasValidas = filas.filter(r => Object.values(r).some(v => String(v).trim() !== ""));
+      const r = filasValidas[filasValidas.length - 1];
+      if (!r) return null;
+
+      return {
+        nombre: nombreMostrado,
+        edad: obtenerCampoFlexible(r, ["edad", "años"]),
+        altura: obtenerCampoFlexible(r, ["altura", "estatura", "talla"]),
+        peso: obtenerCampoFlexible(r, ["peso", "kg"]),
+        objetivo: obtenerCampoFlexible(r, ["objetivo", "meta", "plan"]),
+        notas: obtenerCampoFlexible(r, ["nota", "observacion", "actividad", "detalle"])
+      };
+    }
+
+    async function sincronizarGoogleSheet(notificar = false) {
+      const badge = document.getElementById("sheetStatusBadge");
+      const detalle = document.getElementById("detalleSincronizacion");
+      badge.textContent = "Sincronizando...";
+      badge.className = "status-pill status-warn";
+
+      try {
+        const [filasComidas, filasMatias, filasJulieta] = await Promise.all([
+          leerHojaSheet("Comidas"),
+          leerHojaSheet("Matias"),
+          leerHojaSheet("Julieta")
+        ]);
+
+        const nuevasComidas = filasComidas
+          .map(r => {
+            const keys = Object.keys(r);
+            return {
+              nombre: obtenerCampoFlexible(r, ["comida", "nombre", "alimento", "plato"]) || String(r[keys[0]] || "").trim(),
+              tipo: obtenerCampoFlexible(r, ["tipo", "categoria", "grupo"]) || String(r[keys[1]] || "Comida").trim(),
+              notas: obtenerCampoFlexible(r, ["nota", "detalle", "descripcion", "observacion"]) || String(r[keys[2]] || "").trim()
+            };
+          })
+          .filter(c => c.nombre);
+
+        if (nuevasComidas.length) {
+          comidas = nuevasComidas;
+          localStorage.setItem("nutri_cache_comidas", JSON.stringify(comidas));
+        }
+
+        const perfilMatias = parsearPerfilHoja("Matías", filasMatias);
+        const perfilJulieta = parsearPerfilHoja("Julieta", filasJulieta);
+        const nuevosPerfiles = [perfilMatias, perfilJulieta].filter(Boolean);
+
+        if (nuevosPerfiles.length) {
+          personas = nuevosPerfiles;
+          localStorage.setItem("nutri_cache_personas", JSON.stringify(personas));
+        }
+
+        document.getElementById("countComidas").textContent = comidas.length;
+        renderComidas();
+        renderPerfiles();
+
+        const hora = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+        badge.textContent = `Sheet al día (${hora})`;
+        badge.className = "status-pill status-ok";
+        detalle.textContent = `Última sincronización exitosa a las ${hora} · ${comidas.length} comidas y ${personas.length} perfiles cargados.`;
+
+        if (notificar) mostrarToast("Datos actualizados desde Google Sheets");
+        return true;
+      } catch (err) {
+        console.warn("Error sincronizando Google Sheet:", err);
+        document.getElementById("countComidas").textContent = comidas.length;
+        renderComidas();
+        renderPerfiles();
+        badge.textContent = "Usando copia local";
+        badge.className = "status-pill status-warn";
+        detalle.textContent = `No se pudo leer el Sheet en vivo (${err.message}). Revisá que esté compartido como 'Cualquier persona con el enlace: Lector'.`;
+        return false;
+      }
+    }
+
+    // ==========================================
+    // RENDERIZADO DE COMIDAS Y PERFILES
     // ==========================================
     function actualizarFiltroTipos() {
       const select = document.getElementById("filtroTipoComida");
       const valorActual = select.value;
       const tipos = [...new Set(comidas.map(c => c.tipo).filter(Boolean))];
       select.innerHTML = `<option value="TODOS">Todos los tipos (${comidas.length})</option>` +
-        tipos.map(t => `<option value="${t}">${t}</option>`).join("");
+        tipos.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
       if (tipos.includes(valorActual)) select.value = valorActual;
     }
 
@@ -686,262 +751,103 @@
       const tipoFiltro = document.getElementById("filtroTipoComida").value;
       const tbody = document.getElementById("tablaComidasBody");
 
-      const filtradas = comidas
-        .map((c, index) => ({ ...c, index }))
-        .filter(c => {
-          const coincideTexto = c.nombre.toLowerCase().includes(texto) || (c.notas || "").toLowerCase().includes(texto);
-          const coincideTipo = tipoFiltro === "TODOS" || c.tipo === tipoFiltro;
-          return coincideTexto && coincideTipo;
-        });
+      const filtradas = comidas.filter(c => {
+        const coincideTexto = c.nombre.toLowerCase().includes(texto) || (c.notas || "").toLowerCase().includes(texto);
+        const coincideTipo = tipoFiltro === "TODOS" || c.tipo === tipoFiltro;
+        return coincideTexto && coincideTipo;
+      });
 
-      if (filtradas.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-muted); padding: 1.5rem;">No se encontraron comidas con ese filtro.</td></tr>`;
+      if (!filtradas.length) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color: var(--text-muted); padding: 1.5rem;">No se encontraron comidas con ese filtro.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = filtradas.map(c => `
         <tr>
           <td><strong>${escapeHtml(c.nombre)}</strong></td>
-          <td><span class="badge">${escapeHtml(c.tipo || "General")}</span></td>
+          <td><span class="badge">${escapeHtml(c.tipo || "Comida")}</span></td>
           <td style="color: var(--text-muted);">${escapeHtml(c.notas || "-")}</td>
-          <td>
-            <button class="btn btn-danger btn-sm" onclick="eliminarComida(${c.index})" title="Eliminar">✕</button>
-          </td>
         </tr>
       `).join("");
     }
 
-    function toggleFormComida() {
-      const form = document.getElementById("formNuevaComida");
-      form.style.display = form.style.display === "none" ? "block" : "none";
-    }
-
-    function agregarComidaManual() {
-      const nombre = document.getElementById("nuevaComidaNombre").value.trim();
-      const tipo = document.getElementById("nuevaComidaTipo").value;
-      const notas = document.getElementById("nuevaComidaNotas").value.trim();
-      if (!nombre) return alert("Escribí el nombre de la comida.");
-
-      comidas.unshift({ nombre, tipo, notas });
-      guardarStorage();
-      renderComidas();
-
-      document.getElementById("nuevaComidaNombre").value = "";
-      document.getElementById("nuevaComidaNotas").value = "";
-      document.getElementById("formNuevaComida").style.display = "none";
-      mostrarToast("Comida agregada");
-    }
-
-    function eliminarComida(index) {
-      comidas.splice(index, 1);
-      guardarStorage();
-      renderComidas();
-      mostrarToast("Comida eliminada");
-    }
-
-    // ==========================================
-    // GESTIÓN Y EDICIÓN DE PERFILES
-    // ==========================================
     function renderPerfiles() {
       const container = document.getElementById("contenedorPerfiles");
-      container.innerHTML = personas.map((p, idx) => `
+      container.innerHTML = personas.map(p => `
         <div class="card" style="margin-bottom: 0; background: var(--surface-alt);">
-          <div class="card-header">
-            <h3 class="card-title">${escapeHtml(p.nombre || "Persona " + (idx + 1))}</h3>
-            ${personas.length > 1 ? `<button class="btn btn-danger btn-sm" onclick="eliminarPerfil(${idx})">Eliminar</button>` : ""}
+          <div class="card-header" style="margin-bottom: 0.35rem;">
+            <h3 class="card-title">${escapeHtml(p.nombre)}</h3>
+            <span class="badge">${escapeHtml(p.objetivo || "Sin objetivo")}</span>
           </div>
-          <div class="form-grid">
-            <div>
-              <label>Nombre</label>
-              <input type="text" id="p-nombre-${idx}" value="${escapeHtml(p.nombre || "")}" />
+          <div class="stat-grid">
+            <div class="stat-box">
+              <div class="stat-label">Edad</div>
+              <div class="stat-val">${escapeHtml(p.edad || "-")}</div>
             </div>
-            <div>
-              <label>Edad</label>
-              <input type="text" id="p-edad-${idx}" value="${escapeHtml(p.edad || "")}" placeholder="Ej: 30" />
+            <div class="stat-box">
+              <div class="stat-label">Altura</div>
+              <div class="stat-val">${escapeHtml(p.altura || "-")}</div>
             </div>
-            <div>
-              <label>Altura</label>
-              <input type="text" id="p-altura-${idx}" value="${escapeHtml(p.altura || "")}" placeholder="Ej: 175 cm" />
-            </div>
-            <div>
-              <label>Peso actual</label>
-              <input type="text" id="p-peso-${idx}" value="${escapeHtml(p.peso || "")}" placeholder="Ej: 75 kg" />
+            <div class="stat-box">
+              <div class="stat-label">Peso</div>
+              <div class="stat-val">${escapeHtml(p.peso || "-")}</div>
             </div>
           </div>
-          <div style="margin-bottom: 0.75rem;">
-            <label>Objetivo</label>
-            <input type="text" id="p-objetivo-${idx}" value="${escapeHtml(p.objetivo || "")}" placeholder="Ej: Bajar de peso, mantener, ganar masa..." />
-          </div>
-          <div style="margin-bottom: 0.85rem;">
-            <label>Preferencias / Notas extra (opcional)</label>
-            <input type="text" id="p-notas-${idx}" value="${escapeHtml(p.notas || "")}" placeholder="Ej: Actividad física, restricciones, etc." />
-          </div>
-          <button class="btn btn-dark btn-sm" onclick="guardarPerfil(${idx})">Guardar cambios de ${escapeHtml(p.nombre || "perfil")}</button>
+          <p class="card-subtitle"><strong>Notas:</strong> ${escapeHtml(p.notas || "Sin notas adicionales")}</p>
         </div>
       `).join("");
     }
 
-    function guardarPerfil(idx) {
-      personas[idx] = {
-        nombre: document.getElementById(`p-nombre-${idx}`).value.trim(),
-        edad: document.getElementById(`p-edad-${idx}`).value.trim(),
-        altura: document.getElementById(`p-altura-${idx}`).value.trim(),
-        peso: document.getElementById(`p-peso-${idx}`).value.trim(),
-        objetivo: document.getElementById(`p-objetivo-${idx}`).value.trim(),
-        notas: document.getElementById(`p-notas-${idx}`).value.trim()
-      };
-      guardarStorage();
-      renderPerfiles();
-      mostrarToast(`Perfil de ${personas[idx].nombre} actualizado`);
-    }
-
-    function agregarPerfil() {
-      personas.push({ nombre: "Nueva persona", edad: "", altura: "", peso: "", objetivo: "", notas: "" });
-      guardarStorage();
-      renderPerfiles();
-    }
-
-    function eliminarPerfil(idx) {
-      personas.splice(idx, 1);
-      guardarStorage();
-      renderPerfiles();
-      mostrarToast("Perfil eliminado");
-    }
-
     // ==========================================
-    // IMPORTACIÓN Y EXPORTACIÓN DE CSV
+    // MODELOS AUTOMÁTICOS Y CONSULTA A GEMINI
     // ==========================================
-    function leerArchivoFilas(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const wb = XLSX.read(e.target.result, { type: "array" });
-          const firstSheet = wb.Sheets[wb.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
-          resolve(rows);
-        };
-        reader.onerror = reject;
-        reader.readAsArrayBuffer(file);
-      });
-    }
-
-    function obtenerCampoFlexible(row, posiblesClaves) {
-      const keys = Object.keys(row);
-      for (const posible of posiblesClaves) {
-        const match = keys.find(k => k.toLowerCase().trim().includes(posible));
-        if (match && row[match] !== "") return String(row[match]).trim();
+    async function prepararModelosAutomaticos() {
+      const apiKey = obtenerApiKeyActiva();
+      if (!apiKey || apiKey === "PEGÁ_ACÁ_TU_API_KEY") {
+        colaModelosAuto = [...MODELOS_FALLBACK_BASE];
+        return;
       }
-      return "";
-    }
 
-    document.getElementById("csvComidasInput").addEventListener("change", async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const rows = await leerArchivoFilas(file);
-      if (!rows.length) return alert("El archivo parece estar vacío.");
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        const data = await res.json();
+        if (!data.error && Array.isArray(data.models)) {
+          const detectados = data.models
+            .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes("generateContent"))
+            .map(m => m.name.replace(/^models\//, ""))
+            .filter(name => /gemini/i.test(name) && !/embedding|imagen|veo|aqa/i.test(name));
 
-      comidas = rows.map(r => {
-        const keys = Object.keys(r);
-        return {
-          nombre: obtenerCampoFlexible(r, ["comida", "nombre", "alimento", "plato", "item"]) || String(r[keys[0]] || ""),
-          tipo: obtenerCampoFlexible(r, ["tipo", "categoria", "clasificacion", "grupo"]) || String(r[keys[1]] || "Comida normal"),
-          notas: obtenerCampoFlexible(r, ["nota", "detalle", "descripcion", "observacion", "caloria", "porcion"]) || ""
-        };
-      }).filter(c => c.nombre);
+          if (detectados.length) {
+            detectados.sort((a, b) => {
+              const score = x => (x.includes("flash") ? 0 : 1) + (x.includes("lite") ? -0.3 : 0);
+              return score(a) - score(b);
+            });
+            colaModelosAuto = [...new Set([...detectados, ...MODELOS_FALLBACK_BASE])];
+            document.getElementById("estadoModelos").textContent =
+              `Modelos automáticos listos (${colaModelosAuto.slice(0, 4).join(" -> ")})`;
+            return;
+          }
+        }
+      } catch (_) {}
 
-      guardarStorage();
-      renderComidas();
-      mostrarToast(`Se importaron ${comidas.length} comidas`);
-    });
-
-    document.getElementById("csvPersonasInput").addEventListener("change", async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const rows = await leerArchivoFilas(file);
-      if (!rows.length) return alert("El archivo parece estar vacío.");
-
-      personas = rows.map(r => {
-        const keys = Object.keys(r);
-        return {
-          nombre: obtenerCampoFlexible(r, ["nombre", "persona", "usuario"]) || String(r[keys[0]] || ""),
-          edad: obtenerCampoFlexible(r, ["edad", "años"]),
-          altura: obtenerCampoFlexible(r, ["altura", "estatura", "talla"]),
-          peso: obtenerCampoFlexible(r, ["peso", "kg"]),
-          objetivo: obtenerCampoFlexible(r, ["objetivo", "meta", "plan"]),
-          notas: obtenerCampoFlexible(r, ["nota", "observacion", "actividad", "detalle"])
-        };
-      }).filter(p => p.nombre);
-
-      guardarStorage();
-      renderPerfiles();
-      mostrarToast(`Se importaron ${personas.length} perfiles`);
-    });
-
-    function exportarCSVComidas() {
-      const ws = XLSX.utils.json_to_sheet(comidas);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Comidas");
-      XLSX.writeFile(wb, "comidas_nutri.csv");
-    }
-
-    function exportarCSVPersonas() {
-      const ws = XLSX.utils.json_to_sheet(personas);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Personas");
-      XLSX.writeFile(wb, "personas_nutri.csv");
-    }
-
-    function restablecerDemo() {
-      if (!confirm("¿Restaurar los datos de ejemplo iniciales?")) return;
-      comidas = [...DEMO_COMIDAS];
-      personas = [...DEMO_PERSONAS];
-      guardarStorage();
-      renderComidas();
-      renderPerfiles();
-      mostrarToast("Datos de ejemplo restaurados");
-    }
-
-    // ==========================================
-    // API KEY Y CONSULTA A GEMINI
-    // ==========================================
-    function cargarModeloGuardado() {
-      const modelo = localStorage.getItem("nutri_gemini_modelo") || "gemini-3.8-flash";
-      const select = document.getElementById("modeloSelect");
-      if (select) select.value = modelo;
-      return modelo;
-    }
-
-    function guardarModelo() {
-      const modelo = document.getElementById("modeloSelect").value;
-      localStorage.setItem("nutri_gemini_modelo", modelo);
-      mostrarToast(`Modelo cambiado a ${modelo}`);
-    }
-
-    function actualizarEstadoApi() {
-      const key = localStorage.getItem("nutri_gemini_key");
-      const badge = document.getElementById("apiStatusBadge");
-      if (key) {
-        badge.textContent = "API Key lista";
-        badge.className = "status-pill status-ok";
-      } else {
-        badge.textContent = "Sin API Key (modo prueba)";
-        badge.className = "status-pill status-warn";
-      }
+      colaModelosAuto = [...MODELOS_FALLBACK_BASE];
+      document.getElementById("estadoModelos").textContent =
+        `Modelos automáticos listos (${colaModelosAuto.join(" -> ")})`;
     }
 
     function guardarApiKey() {
       const val = document.getElementById("apiKeyInput").value.trim();
       if (!val) return;
-      localStorage.setItem("nutri_gemini_key", val);
+      localStorage.setItem("nutri_gemini_key_override", val);
       document.getElementById("apiKeyInput").value = "";
-      actualizarEstadoApi();
+      prepararModelosAutomaticos();
       mostrarToast("API Key guardada en este navegador");
     }
 
     function borrarApiKey() {
-      localStorage.removeItem("nutri_gemini_key");
-      actualizarEstadoApi();
-      mostrarToast("API Key eliminada");
+      localStorage.removeItem("nutri_gemini_key_override");
+      prepararModelosAutomaticos();
+      mostrarToast("Usando la API Key configurada en la web");
     }
 
     function usarEjemplo(texto) {
@@ -954,8 +860,8 @@
       mostrarToast("Respuesta copiada");
     }
 
-    function esErrorDemanda(msg) {
-      return /high demand|overloaded|unavailable/i.test(msg || "");
+    function esErrorReintentable(msg) {
+      return /high demand|overloaded|unavailable|quota|429|503|not found|not supported/i.test(msg || "");
     }
 
     async function llamarModeloConReintento(modelo, apiKey, payload, maxIntentos = 2) {
@@ -970,10 +876,8 @@
         const data = await res.json();
         const msg = data?.error?.message || "";
 
-        if (esErrorDemanda(msg) && intento < maxIntentos) {
-          document.getElementById("respuestaIA").textContent =
-            `${modelo} con alta demanda, reintentando (${intento}/${maxIntentos})...`;
-          await new Promise(r => setTimeout(r, 1500));
+        if (/high demand|overloaded|unavailable|503/i.test(msg) && intento < maxIntentos) {
+          await new Promise(r => setTimeout(r, 1200));
           continue;
         }
 
@@ -984,26 +888,21 @@
     async function consultarIA() {
       const pregunta = document.getElementById("preguntaInput").value.trim();
       const out = document.getElementById("respuestaIA");
-      const apiKey = localStorage.getItem("nutri_gemini_key");
+      const apiKey = obtenerApiKeyActiva();
 
       if (!pregunta) return alert("Escribí qué comida o menú querés consultar.");
 
-      if (!apiKey) {
-        out.textContent =
-          "Modo vista previa (todavía no cargaste tu API Key en la pestaña 'CSV & Config').\n\n" +
-          "Cuando conectemos Gemini, la IA va a recibir automáticamente:\n" +
-          `• ${personas.length} perfil(es): ${personas.map(p => `${p.nombre} (${p.peso}, ${p.altura}, objetivo: ${p.objetivo})`).join(" | ")}\n` +
-          `• ${comidas.length} comidas cargadas en tu lista.\n\n` +
-          "Y te va a responder con los gramos y medidas exactas para Matías y para Julieta.";
+      if (!apiKey || apiKey === "PEGÁ_ACÁ_TU_API_KEY") {
+        out.textContent = "Falta configurar API_KEY_POR_DEFECTO dentro del código index.html.";
         return;
       }
 
-      const modeloPrincipal = cargarModeloGuardado();
-      const modeloRespaldo = modeloPrincipal === "gemini-3.8-flash"
-        ? "gemini-3.8-flash-lite"
-        : "gemini-3.8-flash";
+      out.textContent = "Leyendo últimos datos de Google Sheets...";
+      await sincronizarGoogleSheet(false);
 
-      out.textContent = `Calculando porciones con ${modeloPrincipal}...`;
+      if (!colaModelosAuto.length) {
+        await prepararModelosAutomaticos();
+      }
 
       const resumenPersonas = personas.map(p =>
         `- ${p.nombre}: Edad ${p.edad || "?"}, Altura ${p.altura || "?"}, Peso ${p.peso || "?"}, Objetivo: ${p.objetivo || "No especificado"}. ${p.notas ? "Notas: " + p.notas : ""}`
@@ -1017,16 +916,17 @@
 Sos un asistente práctico de nutrición y organización de comidas para Matías y Julieta.
 Tu tarea principal es calcular porciones (en gramos, unidades o medidas caseras claras) diferenciando cuánto debe comer cada uno según su edad, altura, peso y objetivo.
 
-PERFILES ACTUALES:
+PERFILES ACTUALES (leídos en tiempo real desde Google Sheets):
 ${resumenPersonas}
 
-LISTADO DE COMIDAS DISPONIBLES (con su tipo):
+LISTADO DE COMIDAS DISPONIBLES (con su tipo y forma de preparación):
 ${resumenComidas}
 
 REGLAS DE RESPUESTA:
-1. Priorizá las comidas y categorías del listado cargado. Si te preguntan por una comida específica (ej. entrañas con puré), indicá claramente los gramos/cantidades recomendadas para Matías y para Julieta por separado.
-2. Sé claro, concreto y directo, sin rodeos innecesarios.
-3. Aclaración breve cuando corresponda: son estimaciones orientativas basadas en sus datos.
+1. Tené en cuenta la preparación y notas de cada plato del listado (por ejemplo, si son al horno, sin gluten, con semillas, con papas a la air fryer, etc.).
+2. Indicá claramente los gramos, unidades o medidas caseras recomendadas para Matías y para Julieta por separado.
+3. Sé claro, concreto y directo, sin rodeos innecesarios.
+4. Aclaración breve cuando corresponda: son estimaciones orientativas basadas en sus datos.
       `;
 
       const payload = {
@@ -1035,20 +935,23 @@ REGLAS DE RESPUESTA:
       };
 
       try {
-        let data = await llamarModeloConReintento(modeloPrincipal, apiKey, payload, 2);
+        let ultimoError = "";
+        for (const modelo of colaModelosAuto) {
+          out.textContent = "Calculando porciones para Matías y Julieta...";
+          const data = await llamarModeloConReintento(modelo, apiKey, payload, 2);
 
-        if (data?.error && esErrorDemanda(data.error.message)) {
-          out.textContent = `${modeloPrincipal} saturado, probando con ${modeloRespaldo}...`;
-          data = await llamarModeloConReintento(modeloRespaldo, apiKey, payload, 2);
+          if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+            out.textContent = data.candidates[0].content.parts[0].text;
+            return;
+          }
+
+          ultimoError = data?.error?.message || "No se recibió una respuesta válida.";
+          if (!esErrorReintentable(ultimoError)) {
+            break;
+          }
         }
 
-        if (data?.error) {
-          out.textContent = "Error de API: " + data.error.message;
-        } else if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-          out.textContent = data.candidates[0].content.parts[0].text;
-        } else {
-          out.textContent = "No se recibió una respuesta válida del modelo.";
-        }
+        out.textContent = "No se pudo completar la consulta en este momento (" + ultimoError + "). Probá de nuevo en unos segundos.";
       } catch (err) {
         out.textContent = "Error de conexión: " + err.message;
       }
@@ -1062,12 +965,11 @@ REGLAS DE RESPUESTA:
         .replace(/"/g, "&quot;");
     }
 
-    // Inicializar vista
-    guardarStorage();
+    // Inicializar vista y sincronizar con Google Sheets al abrir
     renderComidas();
     renderPerfiles();
-    cargarModeloGuardado();
-    actualizarEstadoApi();
+    sincronizarGoogleSheet(false);
+    prepararModelosAutomaticos();
   </script>
 </body>
 </html>
