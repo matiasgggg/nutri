@@ -280,10 +280,10 @@
       border-radius: 12px;
       padding: 1.25rem;
       min-height: 150px;
-      white-space: pre-wrap;
       font-size: 0.95rem;
       line-height: 1.65;
       border: 1px solid var(--border);
+      word-wrap: break-word;
     }
 
     .status-pill {
@@ -570,7 +570,7 @@
     // ==========================================
     // CONFIGURACIÓN PRINCIPAL
     // ==========================================
-    const API_KEY_POR_DEFECTO = "AQ.Ab8RN6Lcd1x2pUjpuobMynfUyOm1rz5h7LsvBSmy5ofJqbaxzA";
+    const API_KEY_POR_DEFECTO = "PEGÁ_ACÁ_TU_API_KEY";
     const GOOGLE_SHEET_ID = "1-GGFb16bK4S7Gcs3_cCEsfPbjxSXoZbZQPWrXzYjLX0";
 
     const MODELOS_FALLBACK_BASE = [
@@ -581,10 +581,10 @@
       "gemini-2.0-flash-lite"
     ];
 
-    // Respaldo inicial (los datos reales que armaste en tu Sheet)
+    // Respaldo inicial (los datos reales del Sheet)
     const RESPALDO_COMIDAS = [
       { nombre: "Milanesas", tipo: "Comida", notas: "Milanesas de peceto o nalga, finas. Caseras, al horno. Con poco aceite. Rebozadas sin gluten, con semillas, Pure en escamas, avena, rebozador sin tacc." },
-      { nombre: "Supremas", tipo: "Comida", notas: "Supremas finitas caseras al horno, con poco aceite. Rebozadas sin gluten, con semillas, Pure en escamas, avena, rebozador sin tacc." },
+      { nombre: "Supremas", tipo: "Comida", notas: "Supremas finitas caseras al horno, con poca aceute Rebozadas sin gluten, con semillas, Pure en escamas, avena, rebozador sin tacc." },
       { nombre: "Fideos", tipo: "Comida", notas: "Fideos frescos con salsa bolognesa casera." },
       { nombre: "Wraps de carne", tipo: "Comida", notas: "Wraps de carne, lechuga, huevo choclo y arvejas. Con papas a la air fryer" },
       { nombre: "Wraps de pollo", tipo: "Comida", notas: "Wraps de pollo con mayonesa lechuga arroz huevo choclo y arvejas." },
@@ -657,7 +657,6 @@
 
     function parsearPerfilHoja(nombreMostrado, filas) {
       if (!filas || !filas.length) return null;
-      // Tomamos la última fila con datos por si van agregando mediciones debajo
       const filasValidas = filas.filter(r => Object.values(r).some(v => String(v).trim() !== ""));
       const r = filasValidas[filasValidas.length - 1];
       if (!r) return null;
@@ -855,9 +854,15 @@
     }
 
     function copiarRespuesta() {
-      const texto = document.getElementById("respuestaIA").textContent;
+      const texto = document.getElementById("respuestaIA").innerText;
       navigator.clipboard.writeText(texto);
       mostrarToast("Respuesta copiada");
+    }
+
+    function formatearTextoIA(texto) {
+      return escapeHtml(texto)
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\n/g, "<br>");
     }
 
     function esErrorReintentable(msg) {
@@ -931,7 +936,11 @@ REGLAS DE RESPUESTA:
 
       const payload = {
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text: pregunta }] }]
+        contents: [{ role: "user", parts: [{ text: pregunta }] }],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 2048
+        }
       };
 
       try {
@@ -940,9 +949,18 @@ REGLAS DE RESPUESTA:
           out.textContent = "Calculando porciones para Matías y Julieta...";
           const data = await llamarModeloConReintento(modelo, apiKey, payload, 2);
 
-          if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-            out.textContent = data.candidates[0].content.parts[0].text;
-            return;
+          const parts = data?.candidates?.[0]?.content?.parts;
+          if (Array.isArray(parts) && parts.length) {
+            const textoCompleto = parts
+              .filter(p => typeof p.text === "string" && !p.thought)
+              .map(p => p.text)
+              .join("")
+              .trim();
+
+            if (textoCompleto) {
+              out.innerHTML = formatearTextoIA(textoCompleto);
+              return;
+            }
           }
 
           ultimoError = data?.error?.message || "No se recibió una respuesta válida.";
