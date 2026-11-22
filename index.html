@@ -927,6 +927,69 @@
       mostrarToast("Respuesta copiada");
     }
 
+// ==========================================
+    // API KEY Y CONSULTA A GEMINI
+    // ==========================================
+    function actualizarEstadoApi() {
+      const key = localStorage.getItem("nutri_gemini_key");
+      const badge = document.getElementById("apiStatusBadge");
+      if (key) {
+        badge.textContent = "API Key lista";
+        badge.className = "status-pill status-ok";
+      } else {
+        badge.textContent = "Sin API Key (modo prueba)";
+        badge.className = "status-pill status-warn";
+      }
+    }
+
+    function guardarApiKey() {
+      const val = document.getElementById("apiKeyInput").value.trim();
+      if (!val) return;
+      localStorage.setItem("nutri_gemini_key", val);
+      document.getElementById("apiKeyInput").value = "";
+      actualizarEstadoApi();
+      mostrarToast("API Key guardada en este navegador");
+    }
+
+    function borrarApiKey() {
+      localStorage.removeItem("nutri_gemini_key");
+      actualizarEstadoApi();
+      mostrarToast("API Key eliminada");
+    }
+
+    function usarEjemplo(texto) {
+      document.getElementById("preguntaInput").value = texto;
+    }
+
+    function copiarRespuesta() {
+      const texto = document.getElementById("respuestaIA").textContent;
+      navigator.clipboard.writeText(texto);
+      mostrarToast("Respuesta copiada");
+    }
+
+    async function llamarGeminiConReintento(url, payload, maxIntentos = 3) {
+      for (let intento = 1; intento <= maxIntentos; intento++) {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        const msg = data?.error?.message || "";
+        const esAltaDemanda = /high demand|overloaded|unavailable/i.test(msg);
+
+        if (esAltaDemanda && intento < maxIntentos) {
+          document.getElementById("respuestaIA").textContent =
+            `Modelo con alta demanda, reintentando (${intento}/${maxIntentos})...`;
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+
+        return data;
+      }
+    }
+
     async function consultarIA() {
       const pregunta = document.getElementById("preguntaInput").value.trim();
       const out = document.getElementById("respuestaIA");
@@ -970,17 +1033,14 @@ REGLAS DE RESPUESTA:
 3. Aclaración breve cuando corresponda: son estimaciones orientativas basadas en sus datos.
       `;
 
-      try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: [{ role: "user", parts: [{ text: pregunta }] }]
-          })
-        });
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+      const payload = {
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: "user", parts: [{ text: pregunta }] }]
+      };
 
-        const data = await res.json();
+      try {
+        const data = await llamarGeminiConReintento(url, payload);
         if (data.error) {
           out.textContent = "Error de API: " + data.error.message;
         } else {
@@ -990,7 +1050,7 @@ REGLAS DE RESPUESTA:
         out.textContent = "Error de conexión: " + err.message;
       }
     }
-
+    
     function escapeHtml(str) {
       return String(str)
         .replace(/&/g, "&amp;")
