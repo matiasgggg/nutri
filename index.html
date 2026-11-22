@@ -314,12 +314,6 @@
       line-height: 1.5;
     }
 
-    .input-hint {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      margin-top: 0.35rem;
-    }
-
     /* Buttons */
     .btn {
       display: inline-flex;
@@ -373,34 +367,6 @@
       padding: 0.45rem 0.8rem;
       font-size: 0.8125rem;
       min-height: 34px;
-    }
-
-    /* Quick Prompts */
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-bottom: 1.1rem;
-    }
-
-    .chip {
-      background: var(--surface-alt);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 0.45rem 0.9rem;
-      font-family: var(--font-body);
-      font-size: 0.84rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: all 0.15s ease;
-      min-height: 36px;
-    }
-
-    .chip:hover {
-      border-color: var(--primary);
-      background: var(--primary-soft);
-      color: var(--text);
     }
 
     /* AI Response Area & Markdown Formatting */
@@ -457,7 +423,8 @@
     .ai-output hr {
       border: none;
       border-top: 1px solid var(--border);
-      margin: 0.85rem 0;
+      opacity: 0.65;
+      margin: 0.9rem 0;
     }
 
     .status-pill {
@@ -752,22 +719,13 @@
         <div class="card-header">
           <div>
             <h2 class="card-title">Calculadora de Porciones y Menú</h2>
-            <p class="card-subtitle">Porciones en gramos en crudo para Matías y Julieta.</p>
+            <p class="card-subtitle">Porciones en gramos en crudo.</p>
           </div>
-        </div>
-
-        <label>Consultas rápidas</label>
-        <div class="chips">
-          <button class="chip" onclick="usarEjemplo('Entraña asada con puré de papas')">Entraña con puré</button>
-          <button class="chip" onclick="usarEjemplo('Milanesas con ensalada de lechuga, choclo y huevo')">Milanesas con ensalada</button>
-          <button class="chip" onclick="usarEjemplo('Almuerzo y cena con comidas de la lista')">Almuerzo y cena del día</button>
-          <button class="chip" onclick="usarEjemplo('Fideos con bolognesa casera')">Fideos con bolognesa</button>
         </div>
 
         <div style="margin-bottom: 1rem;">
           <label for="preguntaInput">Tu consulta</label>
-          <textarea id="preguntaInput" rows="3" placeholder="Ej: Hoy hacemos supremas al horno con ensalada de lechuga"></textarea>
-          <p class="input-hint">Presioná <strong>Enter</strong> para calcular · <strong>Alt + Enter</strong> para salto de línea</p>
+          <textarea id="preguntaInput" rows="3" placeholder="Ej: Fideos con salsa de tomate"></textarea>
         </div>
 
         <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
@@ -1209,11 +1167,6 @@
       mostrarToast("Usando la API Key configurada en la web");
     }
 
-    function usarEjemplo(texto) {
-      document.getElementById("preguntaInput").value = texto;
-      consultarIA();
-    }
-
     function copiarRespuesta() {
       const texto = document.getElementById("respuestaIA").innerText;
       navigator.clipboard.writeText(texto);
@@ -1331,7 +1284,7 @@
       // Contexto interno del sistema (no se muestra en la interfaz)
       const systemPrompt = `
 Actuá como el nutricionista profesional personal de Matías y Julieta.
-Aplicá tu criterio clínico, datos nutricionales y experiencia práctica para calcular porciones diferenciadas para cada persona según su edad, altura, peso y objetivo.
+Aplicá tu criterio clínico, datos nutricionales y experiencia práctica para calcular porciones según edad, altura, peso y objetivo.
 
 PERFILES ACTUALES (leídos desde Google Sheets):
 ${resumenPersonas}
@@ -1341,12 +1294,14 @@ ${resumenComidas}
 
 REGLAS ESTRICTAS DE RESPUESTA:
 1. Revisá primero el listado del Google Sheet para conocer la composición y preparación de las comidas si figuran ahí; si consultan por comidas o alimentos que NO están en el Sheet, respondé igualmente con tu criterio y experiencia profesional.
-2. NO escribas saludos, introducciones ni menciones sobre si la comida está o no en el Sheet. Empezá directamente con las porciones recomendadas.
-3. NO repitas edad, peso, altura ni objetivo de cada persona en la respuesta.
-4. NO agregues notas finales aclarando que son estimaciones o datos orientativos.
-5. Todas las indicaciones de peso deben ir en GRAMOS Y EN CRUDO (peso crudo antes de cocinar), nunca en peso cocido.
-6. Si un alimento o guarnición puede considerarse "libre", indicá igualmente una cantidad sugerida concreta en gramos en crudo (por ejemplo: "Libre (sugerido: 120 g en crudo)").
-7. Sé breve, directo y claro con las cantidades para Matías y para Julieta.
+2. DESTINATARIOS: Si en la consulta se menciona explícitamente a uno solo (por ejemplo, solo Matías o solo Julieta), devolvé las cantidades ÚNICAMENTE para esa persona. Si NO se aclara uno en particular, devolvé las cantidades para Matías y para Julieta.
+3. ALCANCE ESTRICTO: Limitá las cantidades exclusivamente a las comidas, ingredientes o guarniciones que el usuario indicó que va a comer. NO agregues otras comidas ni guarniciones que no haya mencionado (por ejemplo, si dice "fideos con salsa de tomate", no agregues bolognesa ni supremas).
+4. NO escribas saludos, introducciones ni menciones sobre si la comida está o no en el Sheet. Empezá directamente con las porciones recomendadas.
+5. NO repitas edad, peso, altura ni objetivo de cada persona en la respuesta.
+6. NO agregues notas finales aclarando que son estimaciones o datos orientativos.
+7. Todas las indicaciones de peso deben ir en GRAMOS Y EN CRUDO (peso crudo antes de cocinar), nunca en peso cocido.
+8. Si un alimento o guarnición puede considerarse "libre", indicá igualmente una cantidad sugerida concreta en gramos en crudo (por ejemplo: "Libre (sugerido: 120 g en crudo)").
+9. SUGERENCIA FINAL: Debajo de todo, separada por una línea horizontal ("---"), agregá una sugerencia breve propia de nutricionista para sumar algún acompañante o detalle pequeño (por ejemplo, agregar semillas o un poco de arroz a una ensalada).
       `;
 
       const payload = {
