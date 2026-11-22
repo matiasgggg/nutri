@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Nutri — Matías & Julieta</title>
+  <title>NutrIA — Cálculo de porciones con IA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -113,19 +113,32 @@
       min-width: 0;
     }
 
-    .brand-logo {
+    .brand-logo-btn {
       width: 42px;
       height: 42px;
       flex-shrink: 0;
       border-radius: 12px;
+      border: none;
+      padding: 0;
       background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       color: #ffffff;
       display: grid;
       place-items: center;
+      cursor: pointer;
       box-shadow: 0 6px 16px rgba(16, 185, 129, 0.28);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
 
-    .brand-logo svg {
+    .brand-logo-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.36);
+    }
+
+    .brand-logo-btn:active {
+      transform: scale(0.97);
+    }
+
+    .brand-logo-btn svg {
       width: 23px;
       height: 23px;
     }
@@ -588,7 +601,7 @@
         gap: 0.65rem;
       }
 
-      .brand-logo {
+      .brand-logo-btn {
         width: 38px;
         height: 38px;
       }
@@ -671,15 +684,15 @@
     <div class="header-inner">
       <div class="header-top-row">
         <div class="brand">
-          <div class="brand-logo" aria-hidden="true">
+          <button class="brand-logo-btn" type="button" onclick="irAConsultarIA()" aria-label="Ir a Consultar IA" title="Ir a Consultar IA">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
               <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
               <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
             </svg>
-          </div>
+          </button>
           <div>
-            <div class="brand-title">Nutri & Porciones</div>
-            <span class="brand-sub">Matías & Julieta · Google Sheets</span>
+            <div class="brand-title">NutrIA</div>
+            <span class="brand-sub">Cálculo de porciones con IA</span>
           </div>
         </div>
 
@@ -719,13 +732,12 @@
         <div class="card-header">
           <div>
             <h2 class="card-title">Calculadora de Porciones y Menú</h2>
-            <p class="card-subtitle">Porciones en gramos en crudo.</p>
           </div>
         </div>
 
         <div style="margin-bottom: 1rem;">
           <label for="preguntaInput">Tu consulta</label>
-          <textarea id="preguntaInput" rows="3" placeholder="Ej: Fideos con salsa de tomate"></textarea>
+          <textarea id="preguntaInput" rows="3" placeholder="Ej: vamos a comer fideos frescos con salsa bolgnesa"></textarea>
         </div>
 
         <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
@@ -815,11 +827,11 @@
 
       <div class="card">
         <h2 class="card-title" style="margin-bottom: 0.35rem;">API Key y Modelos Automáticos</h2>
-        <p class="card-subtitle" style="margin-bottom: 1rem;">La API Key precargada funciona automáticamente en cualquier dispositivo. El modelo se elige y rota solo ante picos de demanda.</p>
+        <p class="card-subtitle" style="margin-bottom: 1rem;">Cargá tu API Key en este navegador para usarla sin dejarla expuesta en el código. El modelo se elige y rota solo ante picos de demanda.</p>
         <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
-          <input type="password" id="apiKeyInput" placeholder="Sobrescribir API Key solo en este navegador (opcional)" style="flex: 1; min-width: 240px;" />
-          <button class="btn btn-dark" onclick="guardarApiKey()">Guardar override</button>
-          <button class="btn btn-ghost" onclick="borrarApiKey()">Usar key del código</button>
+          <input type="password" id="apiKeyInput" placeholder="Pegá tu API Key de Gemini para este navegador" style="flex: 1; min-width: 240px;" />
+          <button class="btn btn-dark" onclick="guardarApiKey()">Guardar en navegador</button>
+          <button class="btn btn-ghost" onclick="borrarApiKey()">Borrar key</button>
         </div>
         <p id="estadoModelos" class="card-subtitle" style="margin-top: 0.75rem;"></p>
       </div>
@@ -868,7 +880,7 @@
     // ==========================================
     // CONFIGURACIÓN PRINCIPAL
     // ==========================================
-    const API_KEY_POR_DEFECTO = "PEGÁ_ACÁ_TU_API_KEY";
+    const API_KEY_POR_DEFECTO = "";
     const GOOGLE_SHEET_ID = "1-GGFb16bK4S7Gcs3_cCEsfPbjxSXoZbZQPWrXzYjLX0";
 
     const MODELOS_FALLBACK_BASE = [
@@ -915,14 +927,25 @@
     }
 
     // ==========================================
-    // NAVEGACIÓN POR PESTAÑAS
+    // NAVEGACIÓN POR PESTAÑAS Y LOGO
     // ==========================================
+    function activarPestana(nombreTab) {
+      document.querySelectorAll(".tab-btn").forEach(b => {
+        b.classList.toggle("active", b.dataset.tab === nombreTab);
+      });
+      document.querySelectorAll(".tab-panel").forEach(p => {
+        p.classList.toggle("active", p.id === "tab-" + nombreTab);
+      });
+    }
+
+    function irAConsultarIA() {
+      activarPestana("ia");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
     document.querySelectorAll(".tab-btn").forEach(btn => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-        document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
-        btn.classList.add("active");
-        document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+        activarPestana(btn.dataset.tab);
       });
     });
 
@@ -1120,8 +1143,10 @@
     // ==========================================
     async function prepararModelosAutomaticos() {
       const apiKey = obtenerApiKeyActiva();
-      if (!apiKey || apiKey === "PEGÁ_ACÁ_TU_API_KEY") {
+      if (!apiKey) {
         colaModelosAuto = [...MODELOS_FALLBACK_BASE];
+        document.getElementById("estadoModelos").textContent =
+          "Sin API Key guardada en este navegador.";
         return;
       }
 
@@ -1164,7 +1189,7 @@
     function borrarApiKey() {
       localStorage.removeItem("nutri_gemini_key_override");
       prepararModelosAutomaticos();
-      mostrarToast("Usando la API Key configurada en la web");
+      mostrarToast("API Key borrada de este navegador");
     }
 
     function copiarRespuesta() {
@@ -1264,8 +1289,8 @@
 
       if (!pregunta) return alert("Escribí qué comida o menú querés consultar.");
 
-      if (!apiKey || apiKey === "PEGÁ_ACÁ_TU_API_KEY") {
-        out.textContent = "Falta configurar API_KEY_POR_DEFECTO dentro del código index.html.";
+      if (!apiKey) {
+        out.textContent = "Cargá tu API Key en la pestaña 'Sheet & Config' para usar la calculadora en este navegador.";
         return;
       }
 
