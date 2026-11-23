@@ -440,6 +440,101 @@
       margin: 0.9rem 0;
     }
 
+    /* Conversación de seguimiento / Refinamiento */
+    .thread-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      margin-top: 1rem;
+    }
+
+    .thread-msg {
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      border: 1px solid var(--border);
+      word-wrap: break-word;
+    }
+
+    .thread-msg-user {
+      background: var(--primary-soft);
+      border-color: var(--primary-border);
+      color: var(--text);
+    }
+
+    .thread-msg-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .thread-msg-ai {
+      background: var(--surface-alt);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 0.96rem;
+    }
+
+    .thread-msg-ai p {
+      margin-bottom: 0.6rem;
+    }
+
+    .thread-msg-ai p:last-child {
+      margin-bottom: 0;
+    }
+
+    .thread-msg-ai h2,
+    .thread-msg-ai h3,
+    .thread-msg-ai h4 {
+      font-family: var(--font-display);
+      margin-top: 0.95rem;
+      margin-bottom: 0.35rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.32;
+    }
+
+    .thread-msg-ai h2:first-child,
+    .thread-msg-ai h3:first-child,
+    .thread-msg-ai h4:first-child {
+      margin-top: 0;
+    }
+
+    .thread-msg-ai ul {
+      margin: 0.25rem 0 0.75rem 1.35rem;
+    }
+
+    .thread-msg-ai li {
+      margin-bottom: 0.3rem;
+    }
+
+    .thread-msg-ai hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      opacity: 0.65;
+      margin: 0.85rem 0;
+    }
+
+    .refine-box {
+      margin-top: 1.15rem;
+      padding-top: 1.05rem;
+      border-top: 1px dashed var(--border);
+    }
+
+    .refine-row {
+      display: flex;
+      gap: 0.6rem;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .refine-row textarea {
+      flex: 1 1 280px;
+      min-height: 54px;
+    }
+
     .status-pill {
       display: inline-flex;
       align-items: center;
@@ -742,7 +837,7 @@
 
         <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
           <button class="btn btn-primary" onclick="consultarIA()">Calcular porciones</button>
-          <button class="btn btn-ghost" onclick="document.getElementById('preguntaInput').value = ''">Limpiar</button>
+          <button class="btn btn-ghost" onclick="limpiarCalculadoraCompleta()">Limpiar</button>
         </div>
       </div>
 
@@ -752,6 +847,16 @@
           <button class="btn btn-ghost btn-sm" onclick="copiarRespuesta()">Copiar respuesta</button>
         </div>
         <div id="respuestaIA" class="ai-output">Listo para calcular tu menú.</div>
+
+        <div id="conversacionSeguimiento" class="thread-list" style="display: none;"></div>
+
+        <div id="bloqueRefinamiento" class="refine-box" style="display: none;">
+          <label for="refinarInput">Seguir charlando o precisar detalles sobre este cálculo</label>
+          <div class="refine-row">
+            <textarea id="refinarInput" rows="2" placeholder="Ej: cambiá la salsa a fileto, o aclarame qué pasa si no comimos merienda..."></textarea>
+            <button id="btnEnviarRefinamiento" class="btn btn-dark" onclick="enviarRefinamiento()">Responder</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -914,6 +1019,10 @@
     let personas = JSON.parse(localStorage.getItem("nutri_cache_personas")) || [...RESPALDO_PERSONAS];
     let colaModelosAuto = [...MODELOS_FALLBACK_BASE];
 
+    // Estado de la conversación activa en Calculadora
+    // Cada elemento: { role: "user" | "model", text: string }
+    let historialConversacion = [];
+
     function obtenerApiKeyActiva() {
       const override = (localStorage.getItem("nutri_gemini_key_override") || "").trim();
       return override || (API_KEY_POR_DEFECTO || "").trim();
@@ -950,9 +1059,9 @@
     });
 
     // ==========================================
-    // ATAJO TECLADO: ENTER CALCULA, ALT+ENTER SALTO DE LÍNEA
+    // ATAJOS DE TECLADO
     // ==========================================
-    document.getElementById("preguntaInput").addEventListener("keydown", e => {
+    function manejarAtajoEnterTextarea(e, accionEnviar) {
       if (e.key === "Enter" && e.altKey) {
         e.preventDefault();
         const ta = e.target;
@@ -965,9 +1074,75 @@
 
       if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
         e.preventDefault();
-        consultarIA();
+        accionEnviar();
       }
+    }
+
+    document.getElementById("preguntaInput").addEventListener("keydown", e => {
+      manejarAtajoEnterTextarea(e, () => consultarIA());
     });
+
+    document.getElementById("refinarInput").addEventListener("keydown", e => {
+      manejarAtajoEnterTextarea(e, () => enviarRefinamiento());
+    });
+
+    // ==========================================
+    // CONVERSACIÓN / REFINAMIENTO / LIMPIEZA
+    // ==========================================
+    function resetearSeguimientoUI() {
+      historialConversacion = [];
+      const threadEl = document.getElementById("conversacionSeguimiento");
+      const refineBoxEl = document.getElementById("bloqueRefinamiento");
+      const refineInputEl = document.getElementById("refinarInput");
+      threadEl.innerHTML = "";
+      threadEl.style.display = "none";
+      refineBoxEl.style.display = "none";
+      refineInputEl.value = "";
+    }
+
+    function limpiarCalculadoraCompleta() {
+      document.getElementById("preguntaInput").value = "";
+      document.getElementById("respuestaIA").textContent = "Listo para calcular tu menú.";
+      resetearSeguimientoUI();
+    }
+
+    function renderizarSeguimiento() {
+      const threadEl = document.getElementById("conversacionSeguimiento");
+      // El turno 0 es la consulta inicial y su respuesta inicial (que va en #respuestaIA)
+      // A partir del índice 2 van los mensajes de seguimiento/refinamiento
+      const mensajesExtra = historialConversacion.slice(2);
+
+      if (!mensajesExtra.length) {
+        threadEl.innerHTML = "";
+        threadEl.style.display = "none";
+        return;
+      }
+
+      threadEl.style.display = "flex";
+      threadEl.innerHTML = mensajesExtra.map(m => {
+        if (m.role === "user") {
+          return `
+            <div class="thread-msg thread-msg-user">
+              <div class="thread-msg-label">Vos (aclaración / seguimiento)</div>
+              <div>${formatearEnLinea(m.text)}</div>
+            </div>
+          `;
+        }
+        return `
+          <div class="thread-msg thread-msg-ai">
+            <div class="thread-msg-label">NutrIA</div>
+            <div>${formatearTextoIA(m.text)}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function construirContentsParaGemini() {
+      return historialConversacion.map(m => ({
+        role: m.role === "model" ? "model" : "user",
+        parts: [{ text: m.text }]
+      }));
+    }
 
     // ==========================================
     // LECTURA EN TIEMPO REAL DESDE GOOGLE SHEETS
@@ -1193,8 +1368,13 @@
     }
 
     function copiarRespuesta() {
-      const texto = document.getElementById("respuestaIA").innerText;
-      navigator.clipboard.writeText(texto);
+      const base = document.getElementById("respuestaIA").innerText;
+      const extra = historialConversacion.slice(2).map(m => {
+        const quien = m.role === "user" ? "Vos" : "NutrIA";
+        return `${quien}: ${m.text}`;
+      }).join("\n\n");
+      const textoFinal = extra ? `${base}\n\n${extra}` : base;
+      navigator.clipboard.writeText(textoFinal);
       mostrarToast("Respuesta copiada");
     }
 
@@ -1282,22 +1462,7 @@
       }
     }
 
-    async function consultarIA() {
-      const pregunta = document.getElementById("preguntaInput").value.trim();
-      const out = document.getElementById("respuestaIA");
-      const apiKey = obtenerApiKeyActiva();
-
-      if (!pregunta) return alert("Escribí qué comida o menú querés consultar.");
-
-      if (!apiKey) {
-        out.textContent = "Cargá tu API Key en la pestaña 'Sheet & Config' para usar la calculadora en este navegador.";
-        return;
-      }
-
-      if (!colaModelosAuto.length) {
-        await prepararModelosAutomaticos();
-      }
-
+    function construirSystemPrompt() {
       const resumenPersonas = personas.map(p =>
         `- ${p.nombre}: Edad ${p.edad || "?"}, Altura ${p.altura || "?"}, Peso ${p.peso || "?"}, Objetivo: ${p.objetivo || "No especificado"}. ${p.notas ? "Notas: " + p.notas : ""}`
       ).join("\n");
@@ -1306,8 +1471,7 @@
         `- ${c.nombre} [${c.tipo}]${c.notas ? " (" + c.notas + ")" : ""}`
       ).join("\n");
 
-      // Contexto interno del sistema (no se muestra en la interfaz)
-      const systemPrompt = `
+      return `
 Actuá como el nutricionista profesional personal de Matías y Julieta.
 Aplicá tu criterio clínico, datos nutricionales y experiencia práctica para calcular porciones según edad, altura, peso y objetivo.
 
@@ -1319,55 +1483,145 @@ ${resumenComidas}
 
 REGLAS ESTRICTAS DE RESPUESTA:
 1. Revisá primero el listado del Google Sheet para conocer la composición y preparación de las comidas si figuran ahí; si consultan por comidas o alimentos que NO están en el Sheet, respondé igualmente con tu criterio y experiencia profesional.
-2. DESTINATARIOS: Si en la consulta se menciona explícitamente a uno solo (por ejemplo, solo Matías o solo Julieta), devolvé las cantidades ÚNICAMENTE para esa persona. Si NO se aclara uno en particular, devolvé las cantidades para Matías y para Julieta.
-3. ALCANCE ESTRICTO: Limitá las cantidades exclusivamente a las comidas, ingredientes o guarniciones que el usuario indicó que va a comer. NO agregues otras comidas ni guarniciones que no haya mencionado (por ejemplo, si dice "fideos con salsa de tomate", no agregues bolognesa ni supremas).
-4. NO escribas saludos, introducciones ni menciones sobre si la comida está o no en el Sheet. Empezá directamente con las porciones recomendadas.
-5. NO repitas edad, peso, altura ni objetivo de cada persona en la respuesta.
-6. NO agregues notas finales aclarando que son estimaciones o datos orientativos.
-7. Todas las indicaciones de peso deben ir en GRAMOS Y EN CRUDO (peso crudo antes de cocinar), nunca en peso cocido.
-8. Si un alimento o guarnición puede considerarse "libre", indicá igualmente una cantidad sugerida concreta en gramos en crudo (por ejemplo: "Libre (sugerido: 120 g en crudo)").
-9. SUGERENCIA FINAL: Debajo de todo, separada por una línea horizontal ("---"), agregá una sugerencia breve propia de nutricionista para sumar algún acompañante o detalle pequeño (por ejemplo, agregar semillas o un poco de arroz a una ensalada).
+2. CONTEXTO DE COMIDAS DEL DÍA: Cuando se consulte por una comida sin aclarar momentoespecífico, tratala principalmente como un almuerzo o cena; también pueden consultarse meriendas o desayunos. Cuando indiquen "comida", "almuerzo" o "cena", asumí que corresponde a una comida principal del día y calculá cantidades y pesos asumiendo que las demás comidas del día fueron o serán cumplidas en tiempo y forma (salvo que en la conversación indiquen explícitamente lo contrario).
+3. DESTINATARIOS: Si en la consulta se menciona explícitamente a uno solo (por ejemplo, solo Matías o solo Julieta), devolvé las cantidades ÚNICAMENTE para esa persona. Si NO se aclara uno en particular, devolvé las cantidades para Matías y para Julieta.
+4. ALCANCE ESTRICTO: Limitá las cantidades exclusivamente a las comidas, ingredientes o guarniciones que el usuario indicó que va a comer (y a los ajustes que pida en el seguimiento). NO agregues otras comidas ni guarniciones que no haya mencionado (por ejemplo, si dice "fideos con salsa de tomate", no agregues bolognesa ni supremas).
+5. NO escribas saludos, introducciones ni menciones sobre si la comida está o no en el Sheet. Empezá directamente con las porciones recomendadas o con la respuesta directa a la aclaración.
+6. NO repitas edad, peso, altura ni objetivo de cada persona en la respuesta.
+7. NO agregues notas finales aclarando que son estimaciones o datos orientativos.
+8. Todas las indicaciones de peso deben ir en GRAMOS Y EN CRUDO (peso crudo antes de cocinar), nunca en peso cocido.
+9. Si un alimento o guarnición puede considerarse "libre", indicá igualmente una cantidad sugerida concreta en gramos en crudo (por ejemplo: "Libre (sugerido: 120 g en crudo)").
+10. SUGERENCIA FINAL: Debajo de todo, separada por una línea horizontal ("---"), agregá una sugerencia breve propia de nutricionista para sumar algún acompañante o detalle pequeño (por ejemplo, agregar semillas o un poco de arroz a una ensalada).
       `;
+    }
+
+    async function ejecutarGeneracionGemini(contentsArray, onProgressText) {
+      const apiKey = obtenerApiKeyActiva();
+      if (!apiKey) {
+        return { error: "Cargá tu API Key en la pestaña 'Sheet & Config' para usar la calculadora en este navegador." };
+      }
+
+      if (!colaModelosAuto.length) {
+        await prepararModelosAutomaticos();
+      }
 
       const payload = {
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text: pregunta }] }],
+        systemInstruction: { parts: [{ text: construirSystemPrompt() }] },
+        contents: contentsArray,
         generationConfig: {
           temperature: 0.35,
           maxOutputTokens: 2048
         }
       };
 
-      try {
-        let ultimoError = "";
-        for (const modelo of colaModelosAuto) {
-          out.textContent = "Calculando porciones en crudo...";
-          const data = await llamarModeloConReintento(modelo, apiKey, payload, 2);
+      let ultimoError = "";
+      for (const modelo of colaModelosAuto) {
+        if (onProgressText) onProgressText();
+        const data = await llamarModeloConReintento(modelo, apiKey, payload, 2);
 
-          const parts = data?.candidates?.[0]?.content?.parts;
-          if (Array.isArray(parts) && parts.length) {
-            const textoCompleto = parts
-              .filter(p => typeof p.text === "string" && !p.thought)
-              .map(p => p.text)
-              .join("")
-              .trim();
+        const parts = data?.candidates?.[0]?.content?.parts;
+        if (Array.isArray(parts) && parts.length) {
+          const textoCompleto = parts
+            .filter(p => typeof p.text === "string" && !p.thought)
+            .map(p => p.text)
+            .join("")
+            .trim();
 
-            if (textoCompleto) {
-              out.innerHTML = formatearTextoIA(textoCompleto);
-              return;
-            }
-          }
-
-          ultimoError = data?.error?.message || "No se recibió una respuesta válida.";
-          if (!esErrorReintentable(ultimoError)) {
-            break;
+          if (textoCompleto) {
+            return { text: textoCompleto };
           }
         }
 
-        out.textContent = "No se pudo completar la consulta en este momento (" + ultimoError + "). Probá de nuevo en unos segundos.";
-      } catch (err) {
-        out.textContent = "Error de conexión: " + err.message;
+        ultimoError = data?.error?.message || "No se recibió una respuesta válida.";
+        if (!esErrorReintentable(ultimoError)) {
+          break;
+        }
       }
+
+      return { error: "No se pudo completar la consulta en este momento (" + ultimoError + "). Probá de nuevo en unos segundos." };
+    }
+
+    async function consultarIA() {
+      const pregunta = document.getElementById("preguntaInput").value.trim();
+      const out = document.getElementById("respuestaIA");
+
+      if (!pregunta) return alert("Escribí qué comida o menú querés consultar.");
+
+      // Nueva consulta principal: resetea cualquier hilo previo para empezar limpio
+      resetearSeguimientoUI();
+
+      const resultado = await ejecutarGeneracionGemini(
+        [{ role: "user", parts: [{ text: pregunta }] }],
+        () => { out.textContent = "Calculando porciones en crudo..."; }
+      );
+
+      if (resultado.error) {
+        out.textContent = resultado.error;
+        return;
+      }
+
+      historialConversacion = [
+        { role: "user", text: pregunta },
+        { role: "model", text: resultado.text }
+      ];
+
+      out.innerHTML = formatearTextoIA(resultado.text);
+      document.getElementById("bloqueRefinamiento").style.display = "block";
+      document.getElementById("refinarInput").focus();
+    }
+
+    async function enviarRefinamiento() {
+      const refinarEl = document.getElementById("refinarInput");
+      const btnRefinar = document.getElementById("btnEnviarRefinamiento");
+      const mensajeExtra = refinarEl.value.trim();
+
+      if (!mensajeExtra) return;
+      if (!historialConversacion.length) {
+        return consultarIA();
+      }
+
+      const candidatoHistorial = [
+        ...historialConversacion,
+        { role: "user", text: mensajeExtra }
+      ];
+
+      const contentsPayload = candidatoHistorial.map(m => ({
+        role: m.role === "model" ? "model" : "user",
+        parts: [{ text: m.text }]
+      }));
+
+      btnRefinar.disabled = true;
+      const threadEl = document.getElementById("conversacionSeguimiento");
+      threadEl.style.display = "flex";
+
+      // Mostrar mensaje del usuario y placeholder de carga
+      const historialConPendiente = [
+        ...candidatoHistorial,
+        { role: "model", text: "_Calculando ajuste..._" }
+      ];
+      historialConversacion = historialConPendiente;
+      renderizarSeguimiento();
+      refinarEl.value = "";
+
+      const resultado = await ejecutarGeneracionGemini(contentsPayload, null);
+
+      btnRefinar.disabled = false;
+
+      if (resultado.error) {
+        historialConversacion = [
+          ...candidatoHistorial,
+          { role: "model", text: resultado.error }
+        ];
+        renderizarSeguimiento();
+        return;
+      }
+
+      historialConversacion = [
+        ...candidatoHistorial,
+        { role: "model", text: resultado.text }
+      ];
+      renderizarSeguimiento();
+      refinarEl.focus();
     }
 
     function escapeHtml(str) {
